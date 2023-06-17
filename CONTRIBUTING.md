@@ -2,7 +2,7 @@
 
 Please **do** contribute! In fact, please take over! See https://github.com/jgonggrijp/pip-review/issues/76.
 
-I (@jgonggrijp) will not just abondon `pip-review`, but I am not using it anymore myself and I cannot dedicate any time to actively maintaining it, other than accepting pull requests and maybe issueing a new release once in a while. So if you see a way to improve `pip-review`, whether by fixing a bug or by adding a feature, please go ahead and submit a pull request.
+I (@jgonggrijp) will not just abondon `pip-review`, but I am not using it anymore myself and I cannot dedicate any time to actively maintaining it, other than accepting pull requests and maybe issuing a new release once in a while. So if you see a way to improve `pip-review`, whether by fixing a bug or by adding a feature, please go ahead and submit a pull request.
 
 
 ## Suggestions
