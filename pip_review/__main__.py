@@ -59,8 +59,7 @@ def version_epilog():
     """Version-specific information to be add to the help page."""
     if sys.version_info < (2, 7) or (3, 0) <= sys.version_info < (3, 3):
         return DEPRECATED_NOTICE
-    else:
-        return ''
+    return ''
 
 
 def parse_args():
