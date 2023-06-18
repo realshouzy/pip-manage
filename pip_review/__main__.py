@@ -152,7 +152,7 @@ def setup_logging(verbose):
 class InteractiveAsker(object):
     def __init__(self):
         self.cached_answer = None
-        self.last_answer= None
+        self.last_answer = None
 
     def ask(self, prompt):
         if self.cached_answer is not None:
