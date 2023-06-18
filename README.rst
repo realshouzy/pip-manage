@@ -76,7 +76,7 @@ being upgraded, you can use a constraint file (similar to ``requirements.txt``):
 
 .. code:: console
 
-    $ export PIP_CONSTRAINT="${HOME}/constraints.txt
+    $ export PIP_CONSTRAINT="${HOME}/constraints.txt"
     $ cat $PIP_CONSTRAINT
     pyarrow==0.14.1
     pandas<0.24.0
