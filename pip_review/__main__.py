@@ -50,10 +50,58 @@ Python>=3.3.
 '''
 
 # parameters that pip list supports but not pip install
-LIST_ONLY = set('l local path format not-required exclude-editable include-editable'.split())
+LIST_ONLY = set(
+    [
+        'l',
+        'local',
+        'path',
+        'format',
+        'not-required',
+        'exclude-editable',
+        'include-editable',
+    ]
+)
 
 # parameters that pip install supports but not pip list
-INSTALL_ONLY = set('c constraint no-deps t target platform python-version implementation abi root prefix b build src U upgrade upgrade-strategy force-reinstall I ignore-installed ignore-requires-python no-build-isolation use-pep517 install-option global-option compile no-compile no-warn-script-location no-warn-conflicts no-binary only-binary prefer-binary no-clean require-hashes progress-bar'.split())
+INSTALL_ONLY = set(
+    [
+        'c',
+        'constraint',
+        'no-deps',
+        't',
+        'target',
+        'platform',
+        'python-version',
+        'implementation',
+        'abi',
+        'root',
+        'prefix',
+        'b',
+        'build',
+        'src',
+        'U',
+        'upgrade',
+        'upgrade-strategy',
+        'force-reinstall',
+        'I',
+        'ignore-installed',
+        'ignore-requires-python',
+        'no-build-isolation',
+        'use-pep517',
+        'install-option',
+        'global-option',
+        'compile',
+        'no-compile',
+        'no-warn-script-location',
+        'no-warn-conflicts',
+        'no-binary',
+        'only-binary',
+        'prefer-binary',
+        'no-clean',
+        'require-hashes',
+        'progress-bar',
+    ]
+)
 
 # command that sets up the pip module of the current Python interpreter
 PIP_CMD = [sys.executable, '-m', 'pip']
