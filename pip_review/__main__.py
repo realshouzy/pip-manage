@@ -1,17 +1,18 @@
 from __future__ import absolute_import
-import re
+
 import argparse
-from functools import partial
-import logging
 import json
-import sys
-import pip
+import logging
+import re
 import subprocess
-from packaging import version
+import sys
+from functools import partial
 from operator import itemgetter
 
-PY3 = sys.version_info.major == 3
-if PY3:  # Python3 Imports
+import pip
+from packaging import version
+
+if sys.version_info.major == 3:  # Python3 Imports
     def check_output(*args, **kwargs):
         process = subprocess.Popen(stdout=subprocess.PIPE, *args, **kwargs)
         output, _ = process.communicate()
@@ -21,9 +22,9 @@ if PY3:  # Python3 Imports
             error.output = output
             raise error
         return output
-
 else:  # Python2 Imports
     from subprocess import check_output
+
     import __builtin__
     input = getattr(__builtin__, 'raw_input')
 
@@ -54,19 +55,26 @@ LIST_ONLY = set('l local path format not-required exclude-editable include-edita
 # parameters that pip install supports but not pip list
 INSTALL_ONLY = set('c constraint no-deps t target platform python-version implementation abi root prefix b build src U upgrade upgrade-strategy force-reinstall I ignore-installed ignore-requires-python no-build-isolation use-pep517 install-option global-option compile no-compile no-warn-script-location no-warn-conflicts no-binary only-binary prefer-binary no-clean require-hashes progress-bar'.split())
 
+# command that sets up the pip module of the current Python interpreter
+PIP_CMD = [sys.executable, '-m', 'pip']
 
-def version_epilog():
-    """Version-specific information to be add to the help page."""
-    if sys.version_info < (2, 7) or (3, 0) <= sys.version_info < (3, 3):
-        return DEPRECATED_NOTICE
-    return ''
+# Nicer headings for the columns in the oudated package table
+COLUMNS = {
+    'Package': 'name',
+    'Version': 'version',
+    'Latest': 'latest_version',
+    'Type': 'latest_filetype',
+}
+
+# version-specific information to be add to the help page
+VERSION_EPILOG = DEPRECATED_NOTICE if (2, 7) > sys.version_info >= (3, 3) else ''
 
 
 def parse_args():
     description = 'Keeps your Python packages fresh. Looking for a new maintainer! See https://github.com/jgonggrijp/pip-review/issues/76'
     parser = argparse.ArgumentParser(
         description=description,
-        epilog=EPILOG+version_epilog(),
+        epilog=EPILOG + VERSION_EPILOG,
     )
     parser.add_argument(
         '--verbose', '-v', action='store_true', default=False,
@@ -112,10 +120,6 @@ def filter_forwards(args, exclude):
             result.append(arg)
             admitted = True
     return result
-
-
-def pip_cmd():
-    return [sys.executable, '-m', 'pip']
 
 
 class StdOutFilter(logging.Filter):
@@ -176,7 +180,7 @@ ask_to_install = partial(InteractiveAsker().ask, prompt='Upgrade now?')
 
 
 def update_packages(packages, forwarded, continue_on_fail, freeze_outdated_packages):
-    upgrade_cmd = pip_cmd() + ['install', '-U'] + forwarded
+    upgrade_cmd = PIP_CMD + ['install', '-U'] + forwarded
 
     if freeze_outdated_packages:
         with open('requirements.txt', 'w') as f:
@@ -219,7 +223,7 @@ def parse_legacy(pip_output):
 
 
 def get_outdated_packages(forwarded):
-    command = pip_cmd() + ['list', '--outdated'] + forwarded
+    command = PIP_CMD + ['list', '--outdated'] + forwarded
     pip_version = version.parse(pip.__version__)
     if pip_version >= version.parse('6.0'):
         command.append('--disable-pip-version-check')
@@ -232,15 +236,6 @@ def get_outdated_packages(forwarded):
         output = check_output(command).decode('utf-8').strip()
         packages = parse_legacy(output)
         return packages
-
-
-# Nicer headings for the columns in the oudated package table.
-COLUMNS = {
-    'Package': 'name',
-    'Version': 'version',
-    'Latest': 'latest_version',
-    'Type': 'latest_filetype',
-}
 
 # Next two functions describe how to collect data for the
 # table. Note how they are not concerned with columns widths.
