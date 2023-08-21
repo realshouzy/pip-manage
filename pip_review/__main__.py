@@ -106,7 +106,7 @@ INSTALL_ONLY = set(
 # command that sets up the pip module of the current Python interpreter
 PIP_CMD = [sys.executable, '-m', 'pip']
 
-# Nicer headings for the columns in the oudated package table
+# nicer headings for the columns in the oudated package table
 COLUMNS = {
     'Package': 'name',
     'Version': 'version',
