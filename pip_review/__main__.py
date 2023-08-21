@@ -181,17 +181,17 @@ def setup_logging(verbose):
     else:
         level = logging.INFO
 
-    format = u'%(message)s'
+    format_ = u'%(message)s'
 
     logger = logging.getLogger(u'pip-review')
 
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.addFilter(StdOutFilter())
-    stdout_handler.setFormatter(logging.Formatter(format))
+    stdout_handler.setFormatter(logging.Formatter(format_))
     stdout_handler.setLevel(logging.DEBUG)
 
     stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setFormatter(logging.Formatter(format))
+    stderr_handler.setFormatter(logging.Formatter(format_))
     stderr_handler.setLevel(logging.WARNING)
 
     logger.setLevel(level)
