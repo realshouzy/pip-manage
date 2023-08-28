@@ -9,3 +9,6 @@ __pycache__
 /build
 *.egg-info
 *.pyc
+
+# Additionally, ignore virtual environments
+venv/
