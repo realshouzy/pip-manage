@@ -16,6 +16,6 @@ Any kind of contribution is welcome; nothing is "off limits". However, for those
 
 This repo ([jgonggrijp/pip-review](https://github.com/jgonggrijp/pip-review)) uses [gitflow](https://github.com/nvie/gitflow). Please submit pull requests to the `develop` branch.
 
-The Python files use 4-space soft tabs. The other files use 2-space soft tabs.
+To maintain consistent coding style and formatting across the project, an [``EditorConfig`` file](/.editorconfig) has been set up, in order to guarantee that all contributors use the same settings for indentation, character encoding, line endings etc.
 
-Please ensure that lines of code do not exceed a **maximum length of 79 characters** to maintain code readability and consistency throughout the project.
+Additionally, please ensure that lines of code do not exceed a **maximum length of 79 characters** to further enhance readability and consistency of the project.
