@@ -53,7 +53,7 @@ dev = [
 ]
 
 [project.scripts]
-auto-file-sorter = "pip_review._main:main"
+pip-review = "pip_review._main:main"
 
 [tool.setuptools]
 packages = ["pip_review"]
