@@ -7,7 +7,7 @@ import subprocess
 import sys
 from functools import partial
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pip
 from packaging import version
@@ -29,10 +29,9 @@ if TYPE_CHECKING:
 
 
 def check_output(*args: Any, **kwargs: Any) -> bytes:
-    output: bytes
-    process: subprocess.Popen[str] = subprocess.Popen(
+    process: subprocess.Popen[bytes] = subprocess.Popen(
         stdout=subprocess.PIPE, *args, **kwargs
-    )
+    ) # type: ignore
     output, _ = process.communicate()
     retcode: int | None = process.poll()
     if retcode:
@@ -97,7 +96,7 @@ def _parse_args() -> tuple[argparse.Namespace, list[str]]:
     return parser.parse_known_args()
 
 
-def _filter_forwards(args: list[str], exclude: list[str]) -> list[str]:
+def _filter_forwards(args: list[str], exclude: set[str]) -> list[str]:
     """Return only the parts of `args` that do not appear in `exclude`."""
     result: list[str] = []
     # Start with false, because an unknown argument not starting with a dash
@@ -118,7 +117,7 @@ def _filter_forwards(args: list[str], exclude: list[str]) -> list[str]:
 
 class StdOutFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        return record.levelno in [logging.DEBUG, logging.INFO]
+        return record.levelno in {logging.DEBUG, logging.INFO}
 
 
 def _setup_logging(verbose: bool) -> logging.Logger:
@@ -156,8 +155,8 @@ class InteractiveAsker:
         if self.cached_answer is not None:
             return self.cached_answer
 
-        answer: str = ""
-        while answer not in ["y", "n", "a", "q"]:
+        answer: str | None = ""
+        while answer not in {"y", "n", "a", "q"}:
             question_last: str = (
                 f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
             )
@@ -202,7 +201,7 @@ def update_packages(
 
 # def _confirm(question: str) -> bool:
 #     answer: str = ""
-#     while answer not in ["y", "n"]:
+#     while answer not in {"y", "n"}:
 #         answer = input(question)
 #         answer = answer.strip().lower()
 #     return answer == "y"
@@ -245,29 +244,29 @@ def get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
 # table. Note how they are not concerned with columns widths.
 
 
-def extract_column(data: list[dict[str, str]], field: str, title: str) -> list[str]:
+def _extract_column(data: list[dict[str, str]], field: str, title: str) -> list[str]:
     return [title] + list(map(itemgetter(field), data))
 
 
-def extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
-    return [extract_column(outdated, field, title) for title, field in COLUMNS.items()]
+def _extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
+    return [_extract_column(outdated, field, title) for title, field in COLUMNS.items()]
 
 
 # Next two functions describe how to format any table. Note that
 # they make no assumptions about where the data come from.
 
 
-def column_width(column) -> int:
+def _column_width(column: list[str]) -> int:
     return max(map(len, filter(None, column)))
 
 
 def format_table(columns: list[list[str]]) -> str:
-    widths: list[int] = list(map(column_width, columns))
-    row_fmt = " ".join(map("{{:<{}}}".format, widths)).format
+    widths: list[int] = list(map(_column_width, columns))
+    row_fmt: Callable[..., str] = " ".join(f"{{:<{width}}}" for width in widths).format
     ruler: str = "-" * (sum(widths) + len(widths) - 1)
-    rows = list(map(row_fmt, *columns))
-    head = rows[0]
-    body = rows[1:]
+    rows: list[str] = list(map(row_fmt, *columns))
+    head: str = rows[0]
+    body: list[str] = rows[1:]
     return "\n".join([head, ruler] + body + [ruler])
 
 
@@ -286,7 +285,7 @@ def main() -> int:
         logger.info("Everything up-to-date")
         return 0
     if args.preview or args.preview_only:
-        logger.info(format_table(extract_table(outdated)))
+        logger.info(format_table(_extract_table(outdated)))
         if args.preview_only:
             return 0
     if args.auto:
@@ -309,7 +308,7 @@ def main() -> int:
         )
         if args.interactive:
             answer = ask_to_install()
-            if answer in ["y", "a"]:
+            if answer in {"y", "a"}:
                 selected.append(pkg)
     if selected:
         update_packages(
