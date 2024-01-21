@@ -8,7 +8,6 @@ import logging
 import subprocess  # nosec
 import sys
 from functools import partial
-from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
 import pip
@@ -256,7 +255,7 @@ def get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
 
 
 def _extract_column(data: list[dict[str, str]], field: str, title: str) -> list[str]:
-    return [title, *list(map(itemgetter(field), data))]
+    return [title, *[item[field] for item in data]]
 
 
 def _extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
@@ -268,14 +267,14 @@ def _extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
 
 
 def _column_width(column: list[str]) -> int:
-    return max(map(len, filter(None, column)))
+    return max(len(cell) for cell in column if cell)
 
 
 def format_table(columns: list[list[str]]) -> str:
-    widths: list[int] = list(map(_column_width, columns))
+    widths: list[int] = [_column_width(column) for column in columns]
     row_fmt: Callable[..., str] = " ".join(f"{{:<{width}}}" for width in widths).format
     ruler: str = "-" * (sum(widths) + len(widths) - 1)
-    rows: list[str] = list(map(row_fmt, *columns))
+    rows: list[str] = [row_fmt(*row) for row in zip(*columns, strict=True)]
     head: str = rows[0]
     body: list[str] = rows[1:]
     return "\n".join([head, ruler, *body, ruler])
