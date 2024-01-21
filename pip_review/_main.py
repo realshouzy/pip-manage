@@ -1,13 +1,15 @@
+#!/usr/bin/env python3
+"""Main module."""
 from __future__ import annotations
 
 import argparse
 import json
 import logging
-import subprocess
+import subprocess  # nosec
 import sys
 from functools import partial
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import pip
 from packaging import version
@@ -26,12 +28,17 @@ from pip_review._constants import (
 
 if TYPE_CHECKING:
     import re
+    from collections.abc import Callable
 
 
-def check_output(*args: Any, **kwargs: Any) -> bytes:
-    process: subprocess.Popen[bytes] = subprocess.Popen(
-        stdout=subprocess.PIPE, *args, **kwargs
-    ) # type: ignore
+def _check_output(*args: Any, **kwargs: Any) -> bytes:
+    process: subprocess.Popen[
+        bytes
+    ] = subprocess.Popen(  # pylint: disable=R1732 # nosec
+        stdout=subprocess.PIPE,
+        *args,
+        **kwargs,
+    )  # type: ignore[call-overload]
     output, _ = process.communicate()
     retcode: int | None = process.poll()
     if retcode:
@@ -47,7 +54,11 @@ def _parse_args() -> tuple[argparse.Namespace, list[str]]:
         epilog=EPILOG + VERSION_EPILOG,
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", default=False, help="Show more output"
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=False,
+        help="Show more output",
     )
     parser.add_argument(
         "--raw",
@@ -91,7 +102,11 @@ def _parse_args() -> tuple[argparse.Namespace, list[str]]:
         help="Preview update target list before execution",
     )
     parser.add_argument(
-        "--preview-only", "-P", action="store_true", default=False, help="Preview only"
+        "--preview-only",
+        "-P",
+        action="store_true",
+        default=False,
+        help="Preview only",
     )
     return parser.parse_known_args()
 
@@ -120,12 +135,8 @@ class StdOutFilter(logging.Filter):
         return record.levelno in {logging.DEBUG, logging.INFO}
 
 
-def _setup_logging(verbose: bool) -> logging.Logger:
-    level: int
-    if verbose:
-        level = logging.DEBUG
-    else:
-        level = logging.INFO
+def _setup_logging(*, verbose: bool) -> logging.Logger:
+    level: int = logging.DEBUG if verbose else logging.INFO
 
     format_: str = "%(message)s"
 
@@ -178,10 +189,11 @@ ask_to_install = partial(InteractiveAsker().ask, prompt="Upgrade now?")
 def update_packages(
     packages: list[dict[str, str]],
     forwarded: list[str],
+    *,
     continue_on_fail: bool,
     freeze_outdated_packages: bool,
 ) -> None:
-    upgrade_cmd: list[str] = PIP_CMD + ["install", "-U"] + forwarded
+    upgrade_cmd: list[str] = [*PIP_CMD, "install", "-U", *forwarded]
 
     if freeze_outdated_packages:
         with open("requirements.txt", "w", encoding="utf-8") as f:
@@ -190,12 +202,12 @@ def update_packages(
 
     if not continue_on_fail:
         upgrade_cmd += [f"{pkg['name']}" for pkg in packages]
-        subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)
+        subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)  # nosec
         return
 
     for pkg in packages:
         upgrade_cmd += [f"{pkg['name']}"]
-        subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)
+        subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)  # nosec
         upgrade_cmd.pop()
 
 
@@ -220,24 +232,23 @@ def parse_legacy(pip_output: str) -> list[dict[str, str]]:
                     "name": name_match.group(),
                     "version": version_matches[0],
                     "latest_version": version_matches[1],
-                }
+                },
             )
     return packages
 
 
 def get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
-    command: list[str] = PIP_CMD + ["list", "--outdated"] + forwarded
+    command: list[str] = [*PIP_CMD, "list", "--outdated", *forwarded]
     pip_version: version.Version = version.parse(pip.__version__)
     if pip_version >= version.parse("6.0"):
         command.append("--disable-pip-version-check")
     if pip_version > version.parse("9.0"):
         command.append("--format=json")
-        output: str = check_output(command).decode("utf-8")
+        output: str = _check_output(command).decode("utf-8")
         packages: list[dict[str, str]] = json.loads(output)
         return packages
-    output = check_output(command).decode("utf-8").strip()
-    packages = parse_legacy(output)
-    return packages
+    output = _check_output(command).decode("utf-8").strip()
+    return parse_legacy(output)
 
 
 # Next two functions describe how to collect data for the
@@ -245,7 +256,7 @@ def get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
 
 
 def _extract_column(data: list[dict[str, str]], field: str, title: str) -> list[str]:
-    return [title] + list(map(itemgetter(field), data))
+    return [title, *list(map(itemgetter(field), data))]
 
 
 def _extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
@@ -267,18 +278,18 @@ def format_table(columns: list[list[str]]) -> str:
     rows: list[str] = list(map(row_fmt, *columns))
     head: str = rows[0]
     body: list[str] = rows[1:]
-    return "\n".join([head, ruler] + body + [ruler])
+    return "\n".join([head, ruler, *body, ruler])
 
 
-def main() -> int:
+def main() -> int:  # noqa: C901
     args, forwarded = _parse_args()
     list_args: list[str] = _filter_forwards(forwarded, INSTALL_ONLY)
     install_args: list[str] = _filter_forwards(forwarded, LIST_ONLY)
-    logger: logging.Logger = _setup_logging(args.verbose)
+    logger: logging.Logger = _setup_logging(verbose=args.verbose)
 
     if args.raw and args.interactive:
         # raise SystemExit("--raw and --interactive cannot be used together")
-        return 0
+        return 1
 
     outdated: list[dict[str, str]] = get_outdated_packages(list_args)
     if not outdated and not args.raw:
@@ -290,7 +301,10 @@ def main() -> int:
             return 0
     if args.auto:
         update_packages(
-            outdated, install_args, args.continue_on_fail, args.freeze_outdated_packages
+            outdated,
+            install_args,
+            continue_on_fail=args.continue_on_fail,
+            freeze_outdated_packages=args.freeze_outdated_packages,
         )
         return 0
     if args.raw:
@@ -312,7 +326,10 @@ def main() -> int:
                 selected.append(pkg)
     if selected:
         update_packages(
-            selected, install_args, args.continue_on_fail, args.freeze_outdated_packages
+            selected,
+            install_args,
+            continue_on_fail=args.continue_on_fail,
+            freeze_outdated_packages=args.freeze_outdated_packages,
         )
     return 0
 
