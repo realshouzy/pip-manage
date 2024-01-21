@@ -94,7 +94,7 @@ Alternatively, this option can be specified in ``pip.conf``, e.g.:
     $ cat ~/.config/pip/pip.conf
     [global]
     constraint = /home/username/constraints.txt
-    
+
 * Windows:
 
 .. code:: console
