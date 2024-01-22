@@ -93,7 +93,17 @@ warn_unused_ignores = true
 
 [tool.ruff]
 select = ["ALL"]
-ignore = ["ANN401", "B026", "S603", "ANN101", "PTH123", "PLR2004", "ERA001"]
+ignore = [
+  "ANN401",
+  "B026",
+  "S603",
+  "ANN101",
+  "PTH123",
+  "PLR2004",
+  "ERA001",
+  "EM101",
+  "TRY003",
+]
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"

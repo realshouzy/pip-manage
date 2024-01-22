@@ -8,7 +8,7 @@ import logging
 import subprocess  # nosec
 import sys
 from functools import partial
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pip
 from packaging import version
@@ -21,7 +21,6 @@ from pip_review._constants import (
     LIST_ONLY,
     NAME_PATTERN,
     PIP_CMD,
-    VERSION_EPILOG,
     VERSION_PATTERN,
 )
 
@@ -30,27 +29,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def _check_output(*args: Any, **kwargs: Any) -> bytes:
-    process: subprocess.Popen[
-        bytes
-    ] = subprocess.Popen(  # pylint: disable=R1732 # nosec
-        stdout=subprocess.PIPE,
-        *args,
-        **kwargs,
-    )  # type: ignore[call-overload]
-    output, _ = process.communicate()
-    retcode: int | None = process.poll()
-    if retcode:
-        error = subprocess.CalledProcessError(retcode, args[0])
-        error.output = output
-        raise error
-    return output
-
-
 def _parse_args() -> tuple[argparse.Namespace, list[str]]:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description=DESCRIPTION,
-        epilog=EPILOG + VERSION_EPILOG,
+        epilog=EPILOG,
     )
     parser.add_argument(
         "--verbose",
@@ -172,7 +154,7 @@ class InteractiveAsker:
             )
             question_default: str = f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit "
             answer = input(question_last if self.last_answer else question_default)
-            answer = answer.strip().lower()
+            answer = answer.strip().casefold()
             answer = self.last_answer if answer == "" else answer
 
         if answer in {"q", "a"}:
@@ -182,7 +164,7 @@ class InteractiveAsker:
         return answer
 
 
-ask_to_install = partial(InteractiveAsker().ask, prompt="Upgrade now?")
+_ask_to_install: partial[str] = partial(InteractiveAsker().ask, prompt="Upgrade now?")
 
 
 def update_packages(
@@ -200,25 +182,19 @@ def update_packages(
                 f.write(f"{pkg['name']}=={pkg['version']}\n")
 
     if not continue_on_fail:
-        upgrade_cmd += [f"{pkg['name']}" for pkg in packages]
+        upgrade_cmd.extend(pkg["name"] for pkg in packages)
         subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)  # nosec
         return
 
     for pkg in packages:
-        upgrade_cmd += [f"{pkg['name']}"]
-        subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)  # nosec
-        upgrade_cmd.pop()
+        subprocess.call(
+            [*upgrade_cmd, pkg["name"]],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )  # nosec
 
 
-# def _confirm(question: str) -> bool:
-#     answer: str = ""
-#     while answer not in {"y", "n"}:
-#         answer = input(question)
-#         answer = answer.strip().lower()
-#     return answer == "y"
-
-
-def parse_legacy(pip_output: str) -> list[dict[str, str]]:
+def _parse_legacy(pip_output: str) -> list[dict[str, str]]:
     packages: list[dict[str, str]] = []
     for line in pip_output.splitlines():
         name_match: re.Match[str] | None = NAME_PATTERN.match(line)
@@ -236,22 +212,22 @@ def parse_legacy(pip_output: str) -> list[dict[str, str]]:
     return packages
 
 
-def get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
+def _get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
     command: list[str] = [*PIP_CMD, "list", "--outdated", *forwarded]
     pip_version: version.Version = version.parse(pip.__version__)
     if pip_version >= version.parse("6.0"):
         command.append("--disable-pip-version-check")
     if pip_version > version.parse("9.0"):
         command.append("--format=json")
-        output: str = _check_output(command).decode("utf-8")
+        output: str = subprocess.check_output(command).decode("utf-8")  # nosec
         packages: list[dict[str, str]] = json.loads(output)
         return packages
-    output = _check_output(command).decode("utf-8").strip()
-    return parse_legacy(output)
+    output = subprocess.check_output(command).decode("utf-8").strip()  # nosec
+    return _parse_legacy(output)
 
 
-# Next two functions describe how to collect data for the
-# table. Note how they are not concerned with columns widths.
+# Next two functions describe how to collect data for the table.
+# Note how they are not concerned with columns widths.
 
 
 def _extract_column(data: list[dict[str, str]], field: str, title: str) -> list[str]:
@@ -287,10 +263,10 @@ def main() -> int:  # noqa: C901
     logger: logging.Logger = _setup_logging(verbose=args.verbose)
 
     if args.raw and args.interactive:
-        # raise SystemExit("--raw and --interactive cannot be used together")
+        logger.error("--raw and --interactive cannot be used together")
         return 1
 
-    outdated: list[dict[str, str]] = get_outdated_packages(list_args)
+    outdated: list[dict[str, str]] = _get_outdated_packages(list_args)
     if not outdated and not args.raw:
         logger.info("Everything up-to-date")
         return 0
@@ -320,7 +296,7 @@ def main() -> int:  # noqa: C901
             pkg["version"],
         )
         if args.interactive:
-            answer = ask_to_install()
+            answer: str = _ask_to_install()
             if answer in {"y", "a"}:
                 selected.append(pkg)
     if selected:
