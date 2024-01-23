@@ -8,7 +8,7 @@ import logging
 import subprocess  # nosec
 import sys
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TextIO
 
 import pip
 from packaging import version
@@ -123,12 +123,12 @@ def _setup_logging(*, verbose: bool) -> logging.Logger:
 
     logger: logging.Logger = logging.getLogger("pip-review")
 
-    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
     stdout_handler.addFilter(StdOutFilter())
     stdout_handler.setFormatter(logging.Formatter(format_))
     stdout_handler.setLevel(logging.DEBUG)
 
-    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stderr)
     stderr_handler.setFormatter(logging.Formatter(format_))
     stderr_handler.setLevel(logging.WARNING)
 
