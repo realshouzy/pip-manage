@@ -24,6 +24,11 @@ from pip_review._constants import (
     VERSION_PATTERN,
 )
 
+if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
+    from typing import override
+else:  # pragma: <3.12 cover
+    from typing_extensions import override
+
 if TYPE_CHECKING:
     import re
     from collections.abc import Callable
@@ -112,6 +117,7 @@ def _filter_forwards(args: list[str], exclude: set[str]) -> list[str]:
 
 
 class StdOutFilter(logging.Filter):
+    @override
     def filter(self, record: logging.LogRecord) -> bool:
         return record.levelno in {logging.DEBUG, logging.INFO}
 
