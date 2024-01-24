@@ -1,11 +1,9 @@
-.. image:: https://travis-ci.org/jgonggrijp/pip-review.svg?branch=master
-    :alt: Build status
-    :target: https://secure.travis-ci.org/jgonggrijp/pip-review
+.. image:: https://results.pre-commit.ci/badge/github/realshouzy/pip-review/main.svg
+    :target: https://results.pre-commit.ci/latest/github/realshouzy/pip-review/main
+    :alt: pre-commit.ci status
 
 pip-review
 ==========
-
-*Looking for a new maintainer! See https://github.com/jgonggrijp/pip-review/issues/76.*
 
 ``pip-review`` is a convenience wrapper around ``pip``. It can list available updates by deferring to ``pip list --outdated``. It can also automatically or interactively install available updates for you by deferring to ``pip install``.
 
@@ -94,7 +92,7 @@ Alternatively, this option can be specified in ``pip.conf``, e.g.:
     $ cat ~/.config/pip/pip.conf
     [global]
     constraint = /home/username/constraints.txt
-    
+
 * Windows:
 
 .. code:: console

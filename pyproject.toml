@@ -1,0 +1,138 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+  { name = "realshouzy" },
+  { name = "Julian Gonggrijp", email = "j.gonggrijp@gmail.com" },
+  { name = "Vincent Driessen" },
+]
+name = "pip-review"
+description = "pip-review lets you smoothly manage all available PyPI updates."
+readme = "README.rst"
+license = { text = "BSD" }
+maintainers = [{ name = "realshouzy" }]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  # "Programming Language :: Python :: Implementation :: PyPy",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+  "Topic :: System :: Systems Administration",
+]
+requires-python = ">=3.8"
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Repository = "https://github.com/realshouzy/pip-review"
+
+[project.optional-dependencies]
+# keep in sync with requirements-dev.txt
+dev = [
+  "bandit",
+  "black",
+  "covdefaults",
+  "coverage",
+  "isort",
+  "mypy",
+  "pre-commit",
+  "pylint",
+  "pylint-pytest",
+  "pytest",
+  "ruff",
+  "tox",
+]
+
+[project.scripts]
+pip-review = "pip_review._main:main"
+
+[tool.setuptools]
+packages = ["pip_review"]
+license-files = ["LICENSE.txt"]
+zip-safe = false
+platforms = ["any"]
+
+[tool.setuptools.package-data]
+auto_file_sorter = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pip_review.__version__" }
+dependencies = { file = "requirements.txt" }
+
+[tool.black]
+target-version = ["py312", "py311", "py310", "py39", "py38"]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+strict = true
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+show_error_codes = true
+disallow_subclassing_any = true
+disallow_untyped_decorators = true
+warn_return_any = true
+strict_equality = true
+no_implicit_reexport = true
+no_implicit_optional = true
+warn_unused_ignores = true
+
+[tool.ruff]
+select = ["ALL"]
+ignore = [
+  "ANN401",
+  "B026",
+  "S603",
+  "ANN101",
+  "PTH123",
+  "PLR2004",
+  "ERA001",
+  "EM101",
+  "TRY003",
+  "D107",
+  "UP035",
+  "UP036",
+]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+show-fixes = true
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.isort]
+known-first-party = ["pip_review"]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.pydocstyle]
+convention = "pep257"
+
+[tool.pylint]
+# C0115 and C0116 only disabled temporary
+disable = ["R0903", "C0115", "C0116"]
+load-plugins = "pylint_pytest"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["*_test.py"]
+
+[tool.coverage.run]
+plugins = ["covdefaults"]
