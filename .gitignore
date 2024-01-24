@@ -163,3 +163,4 @@ cython_debug/
 *.t.err
 
 .ruff_cache/
+.vscode/
