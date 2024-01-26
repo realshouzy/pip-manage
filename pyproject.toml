@@ -34,7 +34,7 @@ requires-python = ">=3.8"
 dynamic = ["version", "dependencies"]
 
 [project.urls]
-Repository = "https://github.com/realshouzy/pip-review"
+repository = "https://github.com/realshouzy/pip-review"
 
 [project.optional-dependencies]
 # keep in sync with requirements-dev.txt
@@ -54,16 +54,15 @@ dev = [
 ]
 
 [project.scripts]
-pip-review = "pip_review._main:main"
+pip-review = "pip_review:main"
 
 [tool.setuptools]
-packages = ["pip_review"]
 license-files = ["LICENSE.txt"]
 zip-safe = false
 platforms = ["any"]
 
-[tool.setuptools.package-data]
-auto_file_sorter = ["py.typed"]
+# [tool.setuptools.package-data]
+# auto_file_sorter = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = { attr = "pip_review.__version__" }
@@ -104,6 +103,10 @@ ignore = [
   "ERA001",
   "EM101",
   "TRY003",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
   "D107",
   "UP035",
   "UP036",
@@ -123,8 +126,7 @@ required-imports = ["from __future__ import annotations"]
 convention = "pep257"
 
 [tool.pylint]
-# C0115 and C0116 only disabled temporary
-disable = ["R0903", "C0115", "C0116"]
+disable = ["R0903", "C0114", "C0115", "C0116"]
 load-plugins = "pylint_pytest"
 
 [tool.bandit]
