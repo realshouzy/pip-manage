@@ -174,10 +174,9 @@ def _filter_forwards(args: list[str], exclude: set[str]) -> list[str]:
     # probably would just trip pip.
     admitted: bool = False
     for arg in args:
-        if not arg.startswith("-"):
+        if not arg.startswith("-") and admitted:
             # assume this belongs with the previous argument.
-            if admitted:
-                result.append(arg)
+            result.append(arg)
         elif arg.lstrip("-") in exclude:
             admitted = False
         else:
