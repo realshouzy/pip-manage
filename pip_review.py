@@ -267,14 +267,13 @@ def update_packages(
     if not continue_on_fail:
         upgrade_cmd.extend(pkg["name"] for pkg in packages)
         subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)  # nosec
-        return
-
-    for pkg in packages:
-        subprocess.call(
-            [*upgrade_cmd, pkg["name"]],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )  # nosec
+    else:
+        for pkg in packages:
+            subprocess.call(
+                [*upgrade_cmd, pkg["name"]],
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+            )  # nosec
 
 
 def _parse_legacy(pip_output: str) -> list[dict[str, str]]:
