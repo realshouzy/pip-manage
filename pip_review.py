@@ -203,7 +203,7 @@ def _setup_logging(*, verbose: bool) -> logging.Logger:
 
     format_: str = "%(message)s"
 
-    logger: logging.Logger = logging.getLogger("pip-review")
+    logger: logging.Logger = logging.getLogger(__title__)
 
     stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
     stdout_handler.addFilter(StdOutFilter())
@@ -229,12 +229,12 @@ class InteractiveAsker:
         if self.cached_answer is not None:
             return self.cached_answer
 
+        question_default: str = f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit "
         answer: str | None = ""
         while answer not in {"y", "n", "a", "q"}:
             question_last: str = (
                 f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
             )
-            question_default: str = f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit "
             answer = input(question_last if self.last_answer else question_default)
             answer = answer.strip().casefold()
             answer = self.last_answer if answer == "" else answer
