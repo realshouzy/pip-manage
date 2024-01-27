@@ -14,7 +14,6 @@ import sys
 from functools import partial
 from typing import TYPE_CHECKING, Final, TextIO
 
-import pip
 from packaging import version
 
 if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
@@ -276,36 +275,18 @@ def update_packages(
             )  # nosec
 
 
-def _parse_legacy(pip_output: str) -> list[dict[str, str]]:
-    packages: list[dict[str, str]] = []
-    for line in pip_output.splitlines():
-        name_match: re.Match[str] | None = NAME_PATTERN.match(line)
-        version_matches: list[str] = [
-            match.group() for match in VERSION_PATTERN.finditer(line)
-        ]
-        if name_match and len(version_matches) == 2:
-            packages.append(
-                {
-                    "name": name_match.group(),
-                    "version": version_matches[0],
-                    "latest_version": version_matches[1],
-                },
-            )
-    return packages
-
-
 def _get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
-    command: list[str] = [*PIP_CMD, "list", "--outdated", *forwarded]
-    pip_version: version.Version = version.parse(pip.__version__)
-    if pip_version >= version.parse("6.0"):
-        command.append("--disable-pip-version-check")
-    if pip_version > version.parse("9.0"):
-        command.append("--format=json")
-        output: str = subprocess.check_output(command).decode("utf-8")  # nosec
-        packages: list[dict[str, str]] = json.loads(output)
-        return packages
-    output = subprocess.check_output(command).decode("utf-8").strip()  # nosec
-    return _parse_legacy(output)
+    command: list[str] = [
+        *PIP_CMD,
+        "list",
+        "--outdated",
+        "--disable-pip-version-check",
+        "--format=json",
+        *forwarded,
+    ]
+    output: str = subprocess.check_output(command).decode("utf-8")  # nosec
+    packages: list[dict[str, str]] = json.loads(output)
+    return packages
 
 
 # Next two functions describe how to collect data for the table.
