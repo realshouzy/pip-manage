@@ -4,7 +4,6 @@ from __future__ import annotations
 __version__: Final[str] = "1.4.0"
 __title__: Final[str] = "pip-review"
 
-
 import argparse
 import json
 import logging
@@ -143,6 +142,13 @@ def _parse_args() -> tuple[argparse.Namespace, list[str]]:
         action="store_true",
         default=False,
         help="Automatically install every update found",
+    )
+    parser.add_argument(
+        "--exclude",
+        "-e",
+        action="append",
+        default=[],
+        help="Exclude package from update",
     )
     parser.add_argument(
         "--continue-on-fail",
@@ -329,14 +335,21 @@ def main() -> int:  # noqa: C901
         logger.error("--raw and --interactive cannot be used together")
         return 1
 
-    outdated: list[dict[str, str]] = _get_outdated_packages(list_args)
+    outdated: list[dict[str, str]] = [
+        pkg
+        for pkg in _get_outdated_packages(list_args)
+        if pkg["name"] not in args.exclude
+    ]
+
     if not outdated and not args.raw:
         logger.info("Everything up-to-date")
         return 0
+
     if args.preview or args.preview_only:
         logger.info(format_table(_extract_table(outdated)))
         if args.preview_only:
             return 0
+
     if args.auto:
         update_packages(
             outdated,
@@ -345,6 +358,7 @@ def main() -> int:  # noqa: C901
             freeze_outdated_packages=args.freeze_outdated_packages,
         )
         return 0
+
     if args.raw:
         for pkg in outdated:
             logger.info("%s==%s", pkg["name"], pkg["latest_version"])
@@ -362,6 +376,7 @@ def main() -> int:  # noqa: C901
             answer: str = _ask_to_install()
             if answer in {"y", "a"}:
                 selected.append(pkg)
+
     if selected:
         update_packages(
             selected,
