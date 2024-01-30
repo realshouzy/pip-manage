@@ -281,7 +281,10 @@ def update_packages(
             )  # nosec
 
 
-def _get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
+def _get_outdated_packages(
+    forwarded: list[str],
+    exclude: list[str],
+) -> list[dict[str, str]]:
     command: list[str] = [
         *PIP_CMD,
         "list",
@@ -292,7 +295,7 @@ def _get_outdated_packages(forwarded: list[str]) -> list[dict[str, str]]:
     ]
     output: str = subprocess.check_output(command).decode("utf-8")  # nosec
     packages: list[dict[str, str]] = json.loads(output)
-    return packages
+    return [pkg for pkg in packages if pkg["name"] not in exclude]
 
 
 # Next two functions describe how to collect data for the table.
@@ -335,11 +338,7 @@ def main() -> int:  # noqa: C901
         logger.error("--raw and --interactive cannot be used together")
         return 1
 
-    outdated: list[dict[str, str]] = [
-        pkg
-        for pkg in _get_outdated_packages(list_args)
-        if pkg["name"] not in args.exclude
-    ]
+    outdated: list[dict[str, str]] = _get_outdated_packages(list_args, args.exclude)
 
     if not outdated and not args.raw:
         logger.info("Everything up-to-date")
