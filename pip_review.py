@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""pip-review lets you smoothly manage all available PyPI updates."""
 from __future__ import annotations
 
 __version__: Final[str] = "1.4.0"
@@ -7,13 +8,10 @@ __title__: Final[str] = "pip-review"
 import argparse
 import json
 import logging
-import re
 import subprocess  # nosec
 import sys
 from functools import partial
 from typing import TYPE_CHECKING, Final, TextIO
-
-from packaging import version
 
 if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
     from typing import override
@@ -23,14 +21,7 @@ else:  # pragma: <3.12 cover
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-VERSION_PATTERN: Final[re.Pattern[str]] = re.compile(
-    version.VERSION_PATTERN,
-    re.VERBOSE | re.IGNORECASE,  # necessary according to the `packaging` docs
-)
-
-NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"[a-z0-9_-]+", re.IGNORECASE)
-
-EPILOG: Final[
+_EPILOG: Final[
     str
 ] = """
 Unrecognised arguments will be forwarded to pip list --outdated and
@@ -40,7 +31,7 @@ for a full overview of the options.
 """
 
 # parameters that pip list supports but not pip install
-LIST_ONLY: Final[set[str]] = {
+_LIST_ONLY: Final[set[str]] = {
     "l",
     "local",
     "path",
@@ -52,7 +43,7 @@ LIST_ONLY: Final[set[str]] = {
 }
 
 # parameters that pip install supports but not pip list
-INSTALL_ONLY: Final[set[str]] = {
+_INSTALL_ONLY: Final[set[str]] = {
     "c",
     "constraint",
     "no-deps",
@@ -97,23 +88,21 @@ INSTALL_ONLY: Final[set[str]] = {
 }
 
 # command that sets up the pip module of the current Python interpreter
-PIP_CMD: Final[list[str]] = [sys.executable, "-m", "pip"]
+_PIP_CMD: Final[list[str]] = [sys.executable, "-m", "pip"]
 
 # nicer headings for the columns in the oudated package table
-COLUMNS: Final[dict[str, str]] = {
+_COLUMNS: Final[dict[str, str]] = {
     "Package": "name",
     "Version": "version",
     "Latest": "latest_version",
     "Type": "latest_filetype",
 }
 
-DESCRIPTION: Final[str] = "Keeps your Python packages fresh."
-
 
 def _parse_args() -> tuple[argparse.Namespace, list[str]]:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description=DESCRIPTION,
-        epilog=EPILOG,
+        description=__doc__,
+        epilog=_EPILOG,
     )
     parser.add_argument(
         "--verbose",
@@ -262,7 +251,7 @@ def update_packages(
     continue_on_fail: bool,
     freeze_outdated_packages: bool,
 ) -> None:
-    upgrade_cmd: list[str] = [*PIP_CMD, "install", "-U", *forwarded]
+    upgrade_cmd: list[str] = [*_PIP_CMD, "install", "-U", *forwarded]
 
     if freeze_outdated_packages:
         with open("requirements.txt", "w", encoding="utf-8") as f:
@@ -286,7 +275,7 @@ def _get_outdated_packages(
     exclude: set[str],
 ) -> list[dict[str, str]]:
     command: list[str] = [
-        *PIP_CMD,
+        *_PIP_CMD,
         "list",
         "--outdated",
         "--disable-pip-version-check",
@@ -309,7 +298,9 @@ def _extract_column(data: list[dict[str, str]], field: str, title: str) -> list[
 
 
 def _extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
-    return [_extract_column(outdated, field, title) for title, field in COLUMNS.items()]
+    return [
+        _extract_column(outdated, field, title) for title, field in _COLUMNS.items()
+    ]
 
 
 # Next two functions describe how to format any table. Note that
@@ -332,8 +323,8 @@ def format_table(columns: list[list[str]]) -> str:
 
 def main() -> int:  # noqa: C901
     args, forwarded = _parse_args()
-    list_args: list[str] = _filter_forwards(forwarded, INSTALL_ONLY)
-    install_args: list[str] = _filter_forwards(forwarded, LIST_ONLY)
+    list_args: list[str] = _filter_forwards(forwarded, _INSTALL_ONLY)
+    install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
     logger: logging.Logger = _setup_logging(verbose=args.verbose)
 
     if args.raw and args.interactive:
