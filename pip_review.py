@@ -11,7 +11,7 @@ import logging
 import subprocess  # nosec
 import sys
 from functools import partial
-from typing import TYPE_CHECKING, Final, TextIO
+from typing import TYPE_CHECKING, Final, NamedTuple, TextIO
 
 if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
     from typing import override
@@ -20,6 +20,7 @@ else:  # pragma: <3.12 cover
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from collections.abc import Set as AbstractSet
 
 _EPILOG: Final[
     str
@@ -31,72 +32,82 @@ for a full overview of the options.
 """
 
 # parameters that pip list supports but not pip install
-_LIST_ONLY: Final[set[str]] = {
-    "l",
-    "local",
-    "path",
-    "pre",
-    "format",
-    "not-required",
-    "exclude-editable",
-    "include-editable",
-}
+_LIST_ONLY: Final[frozenset[str]] = frozenset(
+    (
+        "l",
+        "local",
+        "path",
+        "pre",
+        "format",
+        "not-required",
+        "exclude-editable",
+        "include-editable",
+    ),
+)
 
 # parameters that pip install supports but not pip list
-_INSTALL_ONLY: Final[set[str]] = {
-    "c",
-    "constraint",
-    "no-deps",
-    "dry-run",
-    "t",
-    "target",
-    "platform",
-    "python-version",
-    "implementation",
-    "abi",
-    "root",
-    "prefix",
-    "b",
-    "build",
-    "src",
-    "U",
-    "upgrade",
-    "upgrade-strategy",
-    "force-reinstall",
-    "I",
-    "ignore-installed",
-    "ignore-requires-python",
-    "no-build-isolation",
-    "use-pep517",
-    "check-build-dependencies",
-    "break-system-packages",
-    "C",
-    "config-settings",
-    "global-option",
-    "compile",
-    "no-compile",
-    "no-warn-script-location",
-    "no-warn-conflicts",
-    "no-binary",
-    "only-binary",
-    "prefer-binary",
-    "require-hashes",
-    "progress-bar",
-    "root-user-action",
-    "report",
-    "no-clean",
-}
+_INSTALL_ONLY: Final[frozenset[str]] = frozenset(
+    (
+        "c",
+        "constraint",
+        "no-deps",
+        "dry-run",
+        "t",
+        "target",
+        "platform",
+        "python-version",
+        "implementation",
+        "abi",
+        "root",
+        "prefix",
+        "b",
+        "build",
+        "src",
+        "U",
+        "upgrade",
+        "upgrade-strategy",
+        "force-reinstall",
+        "I",
+        "ignore-installed",
+        "ignore-requires-python",
+        "no-build-isolation",
+        "use-pep517",
+        "check-build-dependencies",
+        "break-system-packages",
+        "C",
+        "config-settings",
+        "global-option",
+        "compile",
+        "no-compile",
+        "no-warn-script-location",
+        "no-warn-conflicts",
+        "no-binary",
+        "only-binary",
+        "prefer-binary",
+        "require-hashes",
+        "progress-bar",
+        "root-user-action",
+        "report",
+        "no-clean",
+    ),
+)
 
 # command that sets up the pip module of the current Python interpreter
-_PIP_CMD: Final[list[str]] = [sys.executable, "-m", "pip"]
+_PIP_CMD: Final[tuple[str, ...]] = (sys.executable, "-m", "pip")
+
+
+class _Column(NamedTuple):
+    title: str
+    field: str
+
 
 # nicer headings for the columns in the oudated package table
-_COLUMNS: Final[dict[str, str]] = {
-    "Package": "name",
-    "Version": "version",
-    "Latest": "latest_version",
-    "Type": "latest_filetype",
-}
+_COLUMNS: Final[tuple[_Column, ...]] = (
+    _Column("Package", "name"),
+    _Column("Version", "version"),
+    _Column("Latest", "latest_version"),
+    _Column("Type", "latest_filetype"),
+)
 
 
 def _parse_args() -> tuple[argparse.Namespace, list[str]]:
@@ -169,7 +180,7 @@ def _parse_args() -> tuple[argparse.Namespace, list[str]]:
     return parser.parse_known_args()
 
 
-def _filter_forwards(args: list[str], exclude: set[str]) -> list[str]:
+def _filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
     """Return only the parts of `args` that do not appear in `exclude`."""
     result: list[str] = []
     # Start with false, because an unknown argument not starting with a dash
@@ -272,7 +283,7 @@ def update_packages(
 
 def _get_outdated_packages(
     forwarded: list[str],
-    exclude: set[str],
+    exclude: AbstractSet[str],
 ) -> list[dict[str, str]]:
     command: list[str] = [
         *_PIP_CMD,
@@ -298,9 +309,7 @@ def _extract_column(data: list[dict[str, str]], field: str, title: str) -> list[
 
 
 def _extract_table(outdated: list[dict[str, str]]) -> list[list[str]]:
-    return [
-        _extract_column(outdated, field, title) for title, field in _COLUMNS.items()
-    ]
+    return [_extract_column(outdated, field, title) for title, field in _COLUMNS]
 
 
 # Next two functions describe how to format any table. Note that
