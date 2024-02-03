@@ -301,10 +301,6 @@ def _get_outdated_packages(
     return [pkg for pkg in packages if pkg.name not in exclude] if exclude else packages
 
 
-# Next two functions describe how to collect data for the table.
-# Note how they are not concerned with columns widths.
-
-
 class _Column(NamedTuple):
     title: str
     field: str
@@ -317,6 +313,9 @@ _COLUMNS: Final[tuple[_Column, ...]] = (
     _Column("Latest", "latest_version"),
     _Column("Type", "latest_filetype"),
 )
+
+# Next two functions describe how to collect data for the table.
+# Note how they are not concerned with columns widths.
 
 
 def _extract_column(data: list[_Package], field: str, title: str) -> list[str]:
