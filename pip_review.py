@@ -20,7 +20,7 @@ else:  # pragma: <3.12 cover
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
     from collections.abc import Set as AbstractSet
 
 _EPILOG: Final[
@@ -97,7 +97,9 @@ _INSTALL_ONLY: Final[frozenset[str]] = frozenset(
 _PIP_CMD: Final[tuple[str, ...]] = (sys.executable, "-m", "pip")
 
 
-def _parse_args() -> tuple[argparse.Namespace, list[str]]:
+def _parse_args(
+    args: Sequence[str] | None = None,
+) -> tuple[argparse.Namespace, list[str]]:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description=__doc__,
         epilog=_EPILOG,
@@ -164,7 +166,7 @@ def _parse_args() -> tuple[argparse.Namespace, list[str]]:
         default=False,
         help="Preview only",
     )
-    return parser.parse_known_args()
+    return parser.parse_known_args(args)
 
 
 def _filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
@@ -307,7 +309,7 @@ class _Column(NamedTuple):
 
 
 # nicer headings for the columns in the oudated package table
-_COLUMNS: Final[tuple[_Column, ...]] = (
+_DEFAULT_COLUMNS: Final[tuple[_Column, ...]] = (
     _Column("Package", "name"),
     _Column("Version", "version"),
     _Column("Latest", "latest_version"),
@@ -322,8 +324,11 @@ def _extract_column(data: list[_Package], field: str, title: str) -> list[str]:
     return [title, *[getattr(item, field) for item in data]]
 
 
-def _extract_table(outdated: list[_Package]) -> list[list[str]]:
-    return [_extract_column(outdated, field, title) for title, field in _COLUMNS]
+def _extract_table(
+    outdated: list[_Package],
+    columns: tuple[_Column, ...] = _DEFAULT_COLUMNS,
+) -> list[list[str]]:
+    return [_extract_column(outdated, field, title) for title, field in columns]
 
 
 # Next two functions describe how to format any table. Note that
@@ -344,8 +349,8 @@ def format_table(columns: list[list[str]]) -> str:
     return "\n".join([head, ruler, *body, ruler])
 
 
-def main() -> int:  # noqa: C901
-    args, forwarded = _parse_args()
+def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
+    args, forwarded = _parse_args(argv)
     list_args: list[str] = _filter_forwards(forwarded, _INSTALL_ONLY)
     install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
     logger: logging.Logger = _setup_logging(verbose=args.verbose)
