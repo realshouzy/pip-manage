@@ -91,9 +91,13 @@ no_implicit_reexport = true
 no_implicit_optional = true
 warn_unused_ignores = true
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+disable_error_code = ["attr-defined"]
+
 [tool.ruff]
-select = ["ALL"]
-ignore = [
+lint.select = ["ALL"]
+lint.ignore = [
   "ANN401",
   "B026",
   "S603",
@@ -112,18 +116,21 @@ ignore = [
   "UP035",
   "UP036",
 ]
-fixable = ["ALL"]
-unfixable = []
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+lint.fixable = ["ALL"]
+lint.unfixable = []
 show-fixes = true
 target-version = "py312"
 line-length = 88
 
-[tool.ruff.isort]
+[tool.ruff.lint.extend-per-file-ignores]
+"./tests/*_test.py" = ["S101", "SLF001"]
+"./tests/*.py" = ["D104"]
+
+[tool.ruff.lint.isort]
 known-first-party = ["pip_review"]
 required-imports = ["from __future__ import annotations"]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "pep257"
 
 [tool.pylint]
