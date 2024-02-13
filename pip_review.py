@@ -230,8 +230,11 @@ class _InteractiveAsker:
             question_last: str = (
                 f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
             )
-            answer = input(question_last if self.last_answer else question_default)
-            answer = answer.strip().casefold()
+            answer = (
+                input(question_last if self.last_answer else question_default)
+                .strip()
+                .casefold()
+            )
             answer = self.last_answer if answer == "" else answer
 
         if answer in {"q", "a"}:
