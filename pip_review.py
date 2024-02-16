@@ -176,10 +176,14 @@ def _filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
     # probably would just trip pip.
     admitted: bool = False
     for arg in args:
+        arg_name: str = arg.partition("=")[0].lstrip("-")
+
         if not arg.startswith("-") and admitted:
             # assume this belongs with the previous argument.
             result.append(arg)
-        elif arg.lstrip("-") in exclude:
+        elif not arg.startswith("-") and not admitted:
+            continue
+        elif arg_name in exclude:
             admitted = False
         else:
             result.append(arg)
