@@ -205,11 +205,13 @@ def _setup_logging(*, verbose: bool) -> logging.Logger:
     logger: logging.Logger = logging.getLogger(__title__)
 
     stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
+    stdout_handler.set_name("stdout")
     stdout_handler.addFilter(_StdOutFilter())
     stdout_handler.setFormatter(logging.Formatter(format_))
     stdout_handler.setLevel(logging.DEBUG)
 
     stderr_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stderr)
+    stderr_handler.set_name("stderr")
     stderr_handler.setFormatter(logging.Formatter(format_))
     stderr_handler.setLevel(logging.WARNING)
 
