@@ -280,8 +280,10 @@ def update_packages(
 
     if freeze_outdated_packages:
         with open("requirements.txt", "w", encoding="utf-8") as f:
-            for pkg in packages:
-                f.write(f"{pkg.name}=={pkg.version}\n")
+            outdated_packages: str = "\n".join(
+                f"{pkg.name}=={pkg.version}" for pkg in packages
+            )
+            f.write(f"{outdated_packages}\n")
 
     if not continue_on_fail:
         upgrade_cmd.extend(pkg.name for pkg in packages)
