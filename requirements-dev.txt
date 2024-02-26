@@ -1,3 +1,4 @@
+-e .
 -r requirements.txt
 bandit
 black
