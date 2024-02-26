@@ -44,6 +44,7 @@ _LIST_ONLY: Final[frozenset[str]] = frozenset(
         "not-required",
         "exclude-editable",
         "include-editable",
+        "exclude",
     ),
 )
 
@@ -132,13 +133,6 @@ def _parse_args(
         action="store_true",
         default=False,
         help="Automatically install every update found",
-    )
-    parser.add_argument(
-        "--exclude",
-        "-e",
-        action="append",
-        default=[],
-        help="Exclude package from update",
     )
     parser.add_argument(
         "--continue-on-fail",
@@ -305,7 +299,6 @@ def update_packages(
 
 def _get_outdated_packages(
     forwarded: list[str],
-    exclude: AbstractSet[str],
 ) -> list[_Package]:
     command: list[str] = [
         *_PIP_CMD,
@@ -317,7 +310,7 @@ def _get_outdated_packages(
     ]
     output: str = subprocess.check_output(command).decode("utf-8")  # nosec
     packages: list[_Package] = [_Package.from_dct(pkg) for pkg in json.loads(output)]
-    return [pkg for pkg in packages if pkg.name not in exclude] if exclude else packages
+    return packages
 
 
 class _Column(NamedTuple):
@@ -376,10 +369,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.error("--raw and --interactive cannot be used together")
         return 1
 
-    outdated: list[_Package] = _get_outdated_packages(
-        list_args,
-        set(args.exclude),
-    )
+    outdated: list[_Package] = _get_outdated_packages(list_args)
 
     if not outdated and not args.raw:
         logger.info("Everything up-to-date")
