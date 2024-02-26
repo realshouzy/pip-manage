@@ -11,6 +11,7 @@ import logging
 import subprocess  # nosec
 import sys
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple, TextIO
 
 if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
@@ -150,7 +151,15 @@ def _parse_args(
         "--freeze-outdated-packages",
         action="store_true",
         default=False,
-        help='Freeze all outdated packages to "requirements.txt" before upgrading them',
+        help="Freeze all outdated packages to a file before upgrading them",
+    )
+    parser.add_argument(
+        "--freeze-file",
+        "-f",
+        metavar="FILE_PATH",
+        type=lambda path: Path(path.strip()).resolve(),
+        default=Path("requirements.txt").resolve(),
+        help="Specify the file path to store the frozen packages",
     )
     parser.add_argument(
         "--preview",
@@ -269,21 +278,18 @@ class _Package(NamedTuple):
         )
 
 
+def freeze_outdated_packages(file: Path, packages: list[_Package]) -> None:
+    outdated_packages: str = "\n".join(f"{pkg.name}=={pkg.version}" for pkg in packages)
+    file.write_text(f"{outdated_packages}\n", encoding="utf-8")
+
+
 def update_packages(
     packages: list[_Package],
     forwarded: list[str],
     *,
     continue_on_fail: bool,
-    freeze_outdated_packages: bool,
 ) -> None:
     upgrade_cmd: list[str] = [*_PIP_CMD, "install", "-U", *forwarded]
-
-    if freeze_outdated_packages:
-        with open("requirements.txt", "w", encoding="utf-8") as f:
-            outdated_packages: str = "\n".join(
-                f"{pkg.name}=={pkg.version}" for pkg in packages
-            )
-            f.write(f"{outdated_packages}\n")
 
     if not continue_on_fail:
         upgrade_cmd.extend(pkg.name for pkg in packages)
@@ -360,7 +366,7 @@ def format_table(columns: list[list[str]]) -> str:
     return "\n".join([head, ruler, *body, ruler])
 
 
-def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
+def main(argv: Sequence[str] | None = None) -> int:
     args, forwarded = _parse_args(argv)
     list_args: list[str] = _filter_forwards(forwarded, _INSTALL_ONLY)
     install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
@@ -369,6 +375,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
     if args.raw and args.interactive:
         logger.error("--raw and --interactive cannot be used together")
         return 1
+
+    if not args.freeze_outdated_packages and args.freeze_file:
+        logger.warning("--freeze-file used without --freeze-outdated-packages")
 
     outdated: list[_Package] = _get_outdated_packages(
         list_args,
@@ -384,12 +393,14 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
         if args.preview_only:
             return 0
 
+    if args.freeze_outdated_packages:
+        freeze_outdated_packages(args.freeze_file, outdated)
+
     if args.auto:
         update_packages(
             outdated,
             install_args,
             continue_on_fail=args.continue_on_fail,
-            freeze_outdated_packages=args.freeze_outdated_packages,
         )
         return 0
 
@@ -416,7 +427,6 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901
             selected,
             install_args,
             continue_on_fail=args.continue_on_fail,
-            freeze_outdated_packages=args.freeze_outdated_packages,
         )
     return 0
 
