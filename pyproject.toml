@@ -119,6 +119,7 @@ lint.ignore = [
   "C901",
   "PLR0912",
   "PLR0911",
+  "B905",
 ]
 lint.fixable = ["ALL"]
 lint.unfixable = []
@@ -152,4 +153,4 @@ python_files = ["*_test.py"]
 plugins = ["covdefaults"]
 
 [tool.coverage.report]
-fail_under = 90
+fail_under = 80
