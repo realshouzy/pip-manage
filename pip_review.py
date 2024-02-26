@@ -160,7 +160,7 @@ def _parse_args(
         "-p",
         action="store_true",
         default=False,
-        help="Preview update target list",
+        help="Preview update target list before upgrading packages",
     )
     return parser.parse_known_args(args)
 
@@ -382,11 +382,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.info("Everything up-to-date")
         return 0
 
-    if args.preview:
-        logger.info(format_table(_extract_table(outdated)))
-
     if args.freeze_outdated_packages:
         freeze_outdated_packages(args.freeze_file, outdated)
+
+    if args.raw:
+        for pkg in outdated:
+            logger.info("%s==%s", pkg.name, pkg.latest_version)
+        return 0
+
+    if args.preview and (args.auto or args.interactive):
+        logger.info(format_table(_extract_table(outdated)))
 
     if args.auto:
         update_packages(
@@ -394,11 +399,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             install_args,
             continue_on_fail=args.continue_on_fail,
         )
-        return 0
-
-    if args.raw:
-        for pkg in outdated:
-            logger.info("%s==%s", pkg.name, pkg.latest_version)
         return 0
 
     selected: list[_Package] = []
