@@ -153,4 +153,4 @@ python_files = ["*_test.py"]
 plugins = ["covdefaults"]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 90
