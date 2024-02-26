@@ -160,14 +160,7 @@ def _parse_args(
         "-p",
         action="store_true",
         default=False,
-        help="Preview update target list before execution",
-    )
-    parser.add_argument(
-        "--preview-only",
-        "-P",
-        action="store_true",
-        default=False,
-        help="Preview only",
+        help="Preview update target list",
     )
     return parser.parse_known_args(args)
 
@@ -365,8 +358,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
     logger: logging.Logger = _setup_logging(verbose=args.verbose)
 
+    if args.raw and args.auto:
+        logger.error("--raw and --auto cannot be used together")
+        return 1
+
     if args.raw and args.interactive:
         logger.error("--raw and --interactive cannot be used together")
+        return 1
+
+    if args.auto and args.interactive:
+        logger.error("--auto and --interactive cannot be used together")
         return 1
 
     outdated: list[_Package] = _get_outdated_packages(list_args)
@@ -375,10 +376,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.info("Everything up-to-date")
         return 0
 
-    if args.preview or args.preview_only:
+    if args.preview:
         logger.info(format_table(_extract_table(outdated)))
-        if args.preview_only:
-            return 0
 
     if args.freeze_outdated_packages:
         freeze_outdated_packages(args.freeze_file, outdated)
