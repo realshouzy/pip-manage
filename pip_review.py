@@ -376,9 +376,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.error("--raw and --interactive cannot be used together")
         return 1
 
-    if not args.freeze_outdated_packages and args.freeze_file:
-        logger.warning("--freeze-file used without --freeze-outdated-packages")
-
     outdated: list[_Package] = _get_outdated_packages(
         list_args,
         set(args.exclude),
