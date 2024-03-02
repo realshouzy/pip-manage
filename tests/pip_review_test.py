@@ -22,6 +22,15 @@ def test_packages() -> list[pip_review._Package]:
     ]
 
 
+@pytest.fixture()
+def test_subprocess_output() -> bytes:
+    # pylint: disable=C0301
+    return (
+        b'[{"name": "test1", "version": "1.0.0", "latest_version": "1.1.0", "latest_filetype": "wheel"}, '  # noqa: E501
+        b'{"name": "test2", "version": "1.9.9", "latest_version": "2.0.0", "latest_filetype": "wheel"}]\r\n'  # noqa: E501
+    )
+
+
 @pytest.mark.parametrize(
     ("constant", "expected"),
     [
@@ -561,15 +570,13 @@ def test_update_packages_continue_on_fail_set_to_true(
     mock_subprocess_call.assert_has_calls(expected_calls)
 
 
-def test_get_outdated_packages(test_packages: list[pip_review._Package]) -> None:
-    # pylint: disable=C0301
-    return_value: bytes = (
-        b'[{"name": "test1", "version": "1.0.0", "latest_version": "1.1.0", "latest_filetype": "wheel"}, '  # noqa: E501
-        b'{"name": "test2", "version": "1.9.9", "latest_version": "2.0.0", "latest_filetype": "wheel"}]\r\n'  # noqa: E501
-    )
+def test_get_outdated_packages(
+    test_packages: list[pip_review._Package],
+    test_subprocess_output: bytes,
+) -> None:
     with mock.patch(
         "subprocess.check_output",
-        return_value=return_value,
+        return_value=test_subprocess_output,
     ):
         outdated_packages: list[pip_review._Package] = (
             pip_review._get_outdated_packages([])
@@ -698,8 +705,283 @@ def test_main_no_outdated_packages(
     ):
         exit_code: int = pip_review.main(args)
 
-    assert exit_code == 0
     assert "Everything up-to-date" in capsys.readouterr().out
+    assert exit_code == 0
+
+
+def test_main_default_output_with_outdated_packages(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ):
+        exit_code: int = pip_review.main([])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
+    )
+    assert exit_code == 0
+
+
+def test_main_freeze_outdated_packages(
+    tmp_path: Path,
+    test_subprocess_output: bytes,
+) -> None:
+    tmp_file: Path = tmp_path / "outdated.txt"
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ):
+        exit_code: int = pip_review.main(
+            ["--freeze-outdated-packages", "--freeze-file", str(tmp_file)],
+        )
+
+    assert tmp_file.read_text(encoding="utf-8") == "test1==1.0.0\ntest2==1.9.9\n"
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--raw", "-r"])
+def test_main_with_raw(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+    arg: str,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ):
+        exit_code: int = pip_review.main([arg])
+
+    assert "test1==1.1.0\ntest2==2.0.0\n" in capsys.readouterr().out
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("upgrade_arg", ["--auto", "-a", "-i", "--interactive"])
+@pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
+def test_main_preview_runs_when_upgrading(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+    preview_arg: str,
+    upgrade_arg: str,
+) -> None:
+    # pylint: disable=C0301
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("subprocess.call") as mock_subprocess_call:
+        exit_code: int = pip_review.main([preview_arg, upgrade_arg])
+
+    expected_result: str = (
+        "Package Version Latest Type \n----------------------------\ntest1   1.0.0   1.1.0  wheel\ntest2   1.9.9   2.0.0  wheel\n----------------------------"  # noqa: E501
+    )
+    assert expected_result in capsys.readouterr().out
+    expected_cmd: list[str] = [
+        *pip_review._PIP_CMD,
+        "install",
+        "-U",
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
+def test_main_preview_does_not_run_when_not_upgrading(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+    preview_arg: str,
+) -> None:
+    # pylint: disable=C0301
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ):
+        exit_code: int = pip_review.main([preview_arg])
+
+    expected_result: str = (
+        "Package Version Latest Type \n----------------------------\ntest1   1.0.0   1.1.0  wheel\ntest2   1.9.9   2.0.0  wheel\n----------------------------"  # noqa: E501
+    )
+    assert expected_result not in capsys.readouterr().out
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--auto", "-a"])
+def test_main_auto_continue_on_fail_set_to_false(
+    test_subprocess_output: bytes,
+    arg: str,
+) -> None:
+    # pylint: disable=C0301
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("subprocess.call") as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+
+    expected_cmd: list[str] = [
+        *pip_review._PIP_CMD,
+        "install",
+        "-U",
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--auto", "-a"])
+def test_main_auto_continue_on_fail_set_to_true(
+    test_subprocess_output: bytes,
+    arg: str,
+) -> None:
+    # pylint: disable=C0301
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("subprocess.call") as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg, "--continue-on-fail"])
+
+    expected_calls: list[mock._Call] = [
+        mock.call(
+            [
+                *pip_review._PIP_CMD,
+                "install",
+                "-U",
+                "test1",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+        mock.call(
+            [
+                *pip_review._PIP_CMD,
+                "install",
+                "-U",
+                "test2",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+    ]
+    mock_subprocess_call.assert_has_calls(expected_calls)
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("user_input", ["y", "a"])
+@pytest.mark.parametrize("arg", ["--interactive", "-i"])
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+    user_input: str,
+    arg: str,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
+    )
+    expected_cmd: list[str] = [
+        *pip_review._PIP_CMD,
+        "install",
+        "-U",
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("user_input", ["y", "a"])
+@pytest.mark.parametrize("arg", ["--interactive", "-i"])
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+    user_input: str,
+    arg: str,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg, "--continue-on-fail"])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
+    )
+    expected_calls: list[mock._Call] = [
+        mock.call(
+            [
+                *pip_review._PIP_CMD,
+                "install",
+                "-U",
+                "test1",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+        mock.call(
+            [
+                *pip_review._PIP_CMD,
+                "install",
+                "-U",
+                "test2",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+    ]
+    mock_subprocess_call.assert_has_calls(expected_calls)
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("user_input", ["n", "q"])
+@pytest.mark.parametrize("arg", ["--interactive", "-i"])
+def test_main_interactive_deny_all(
+    capsys: pytest.CaptureFixture[str],
+    test_subprocess_output: bytes,
+    user_input: str,
+    arg: str,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
+    )
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 0
 
 
 if __name__ == "__main__":
