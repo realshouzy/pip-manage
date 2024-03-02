@@ -343,6 +343,9 @@ def test_stdout_filter_no_passes(record: logging.LogRecord) -> None:
     assert not pip_review._StdOutFilter().filter(record)
 
 
+# tests for _setup_logging have to run before the tests for main,
+# because the handlers need to be cleared,
+# otherwise the tests for _setup_logging fail
 @pytest.mark.parametrize(
     ("verbose", "logger_level"),
     [
