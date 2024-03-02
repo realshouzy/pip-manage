@@ -364,6 +364,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
     logger: logging.Logger = _setup_logging(verbose=args.verbose)
 
+    logger.debug("Forwarded arguments: %s", forwarded)
+    logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
+    logger.debug("Arguments forwarded to 'pip install': %s", install_args)
+
     if args.raw and args.auto:
         logger.error("--raw and --auto cannot be used together")
         return 1
@@ -377,6 +381,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     outdated: list[_Package] = _get_outdated_packages(list_args)
+    logger.debug("Outdated packages: %s", outdated)
 
     if not outdated and not args.raw:
         logger.info("Everything up-to-date")
@@ -384,6 +389,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.freeze_outdated_packages:
         freeze_outdated_packages(args.freeze_file, outdated)
+        logger.debug("Wrote outdated packages to %s", args.freeze_file)
 
     if args.raw:
         for pkg in outdated:
@@ -414,6 +420,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if answer in {"y", "a"}:
                 selected.append(pkg)
 
+    logger.debug("Selected packages: %s", selected)
     if selected:
         update_packages(
             selected,
