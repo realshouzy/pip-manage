@@ -339,10 +339,9 @@ def _extract_table(
 
 
 def _column_width(column: list[str]) -> int:
-    try:
-        return max(len(cell) for cell in column if cell)
-    except ValueError:
+    if not any(column):
         return 0
+    return max(len(cell) for cell in column if cell)
 
 
 def format_table(columns: list[list[str]]) -> str:
