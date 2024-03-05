@@ -249,7 +249,7 @@ class _InteractiveAsker:
 _ask_to_install: partial[str] = partial(_InteractiveAsker().ask, prompt="Upgrade now?")
 
 
-class _Package(NamedTuple):
+class _OutdatedPackageInfo(NamedTuple):
     name: str
     version: str
     latest_version: str
@@ -265,13 +265,13 @@ class _Package(NamedTuple):
         )
 
 
-def freeze_outdated_packages(file: Path, packages: list[_Package]) -> None:
+def freeze_outdated_packages(file: Path, packages: list[_OutdatedPackageInfo]) -> None:
     outdated_packages: str = "\n".join(f"{pkg.name}=={pkg.version}" for pkg in packages)
     file.write_text(f"{outdated_packages}\n", encoding="utf-8")
 
 
 def update_packages(
-    packages: list[_Package],
+    packages: list[_OutdatedPackageInfo],
     forwarded: list[str],
     *,
     continue_on_fail: bool,
@@ -292,7 +292,7 @@ def update_packages(
 
 def _get_outdated_packages(
     forwarded: list[str],
-) -> list[_Package]:
+) -> list[_OutdatedPackageInfo]:
     command: list[str] = [
         *_PIP_CMD,
         "list",
@@ -302,34 +302,40 @@ def _get_outdated_packages(
         *forwarded,
     ]
     output: str = subprocess.check_output(command).decode("utf-8")  # nosec
-    packages: list[_Package] = [_Package.from_dct(pkg) for pkg in json.loads(output)]
+    packages: list[_OutdatedPackageInfo] = [
+        _OutdatedPackageInfo.from_dct(pkg) for pkg in json.loads(output)
+    ]
     return packages
 
 
-class _Column(NamedTuple):
+class _ColumnSpec(NamedTuple):
     title: str
     field: str
 
 
 # nicer headings for the columns in the oudated package table
-_DEFAULT_COLUMNS: Final[tuple[_Column, ...]] = (
-    _Column("Package", "name"),
-    _Column("Version", "version"),
-    _Column("Latest", "latest_version"),
-    _Column("Type", "latest_filetype"),
+_DEFAULT_COLUMNS: Final[tuple[_ColumnSpec, ...]] = (
+    _ColumnSpec("Package", "name"),
+    _ColumnSpec("Version", "version"),
+    _ColumnSpec("Latest", "latest_version"),
+    _ColumnSpec("Type", "latest_filetype"),
 )
 
 # Next two functions describe how to collect data for the table.
 # Note how they are not concerned with columns widths.
 
 
-def _extract_column(data: list[_Package], field: str, title: str) -> list[str]:
+def _extract_column(
+    data: list[_OutdatedPackageInfo],
+    field: str,
+    title: str,
+) -> list[str]:
     return [title, *[getattr(item, field) for item in data]]
 
 
 def _extract_table(
-    outdated: list[_Package],
-    columns: tuple[_Column, ...] = _DEFAULT_COLUMNS,
+    outdated: list[_OutdatedPackageInfo],
+    columns: tuple[_ColumnSpec, ...] = _DEFAULT_COLUMNS,
 ) -> list[list[str]]:
     return [_extract_column(outdated, field, title) for title, field in columns]
 
@@ -379,7 +385,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.error("--auto and --interactive cannot be used together")
         return 1
 
-    outdated: list[_Package] = _get_outdated_packages(list_args)
+    outdated: list[_OutdatedPackageInfo] = _get_outdated_packages(list_args)
     logger.debug("Outdated packages: %s", outdated)
 
     if not outdated and not args.raw:
@@ -406,7 +412,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
-    selected: list[_Package] = []
+    selected: list[_OutdatedPackageInfo] = []
     for pkg in outdated:
         logger.info(
             "%s==%s is available (you have %s)",

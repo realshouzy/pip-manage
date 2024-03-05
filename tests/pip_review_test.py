@@ -15,10 +15,10 @@ import pip_review
 
 
 @pytest.fixture()
-def test_packages() -> list[pip_review._Package]:
+def test_packages() -> list[pip_review._OutdatedPackageInfo]:
     return [
-        pip_review._Package("test1", "1.0.0", "1.1.0", "wheel"),
-        pip_review._Package("test2", "1.9.9", "2.0.0", "wheel"),
+        pip_review._OutdatedPackageInfo("test1", "1.0.0", "1.1.0", "wheel"),
+        pip_review._OutdatedPackageInfo("test2", "1.9.9", "2.0.0", "wheel"),
     ]
 
 
@@ -118,18 +118,22 @@ for a full overview of the options.
         pytest.param(
             pip_review._DEFAULT_COLUMNS,
             (
-                pip_review._Column("Package", "name"),
-                pip_review._Column("Version", "version"),
-                pip_review._Column("Latest", "latest_version"),
-                pip_review._Column("Type", "latest_filetype"),
+                pip_review._ColumnSpec("Package", "name"),
+                pip_review._ColumnSpec("Version", "version"),
+                pip_review._ColumnSpec("Latest", "latest_version"),
+                pip_review._ColumnSpec("Type", "latest_filetype"),
             ),
             id="_DEFAULT_COLUMNS",
         ),
     ],
 )
 def test_constants(
-    constant: str | frozenset[str] | tuple[str, ...] | tuple[pip_review._Column, ...],
-    expected: str | frozenset[str] | tuple[str, ...] | tuple[pip_review._Column, ...],
+    constant: (
+        str | frozenset[str] | tuple[str, ...] | tuple[pip_review._ColumnSpec, ...]
+    ),
+    expected: (
+        str | frozenset[str] | tuple[str, ...] | tuple[pip_review._ColumnSpec, ...]
+    ),
 ) -> None:
     assert constant == expected
 
@@ -425,11 +429,11 @@ def test_ask_to_install_with_last_answer_and_invalid_input(last_answer: str) -> 
 
 
 def test_package_is_tuple() -> None:
-    assert issubclass(pip_review._Package, tuple)
+    assert issubclass(pip_review._OutdatedPackageInfo, tuple)
 
 
 def test_package_fields() -> None:
-    assert pip_review._Package._fields == (
+    assert pip_review._OutdatedPackageInfo._fields == (
         "name",
         "version",
         "latest_version",
@@ -489,12 +493,12 @@ def test_package_fields() -> None:
     ],
 )
 def test_package_from_dct(dct: dict[str, str], expected: tuple[str, ...]) -> None:
-    assert pip_review._Package.from_dct(dct) == expected
+    assert pip_review._OutdatedPackageInfo.from_dct(dct) == expected
 
 
 def test_freeze_outdated_packages(
     tmp_path: Path,
-    test_packages: list[pip_review._Package],
+    test_packages: list[pip_review._OutdatedPackageInfo],
 ) -> None:
     tmp_file: Path = tmp_path / "outdated.txt"
     pip_review.freeze_outdated_packages(tmp_file, test_packages)
@@ -507,7 +511,7 @@ def test_freeze_outdated_packages(
 )
 def test_update_packages_continue_on_fail_set_to_false(
     forwarded: list[str],
-    test_packages: list[pip_review._Package],
+    test_packages: list[pip_review._OutdatedPackageInfo],
 ) -> None:
     with mock.patch("subprocess.call") as mock_subprocess_call:
         pip_review.update_packages(
@@ -537,7 +541,7 @@ def test_update_packages_continue_on_fail_set_to_false(
 )
 def test_update_packages_continue_on_fail_set_to_true(
     forwarded: list[str],
-    test_packages: list[pip_review._Package],
+    test_packages: list[pip_review._OutdatedPackageInfo],
 ) -> None:
     with mock.patch("subprocess.call") as mock_subprocess_call:
         pip_review.update_packages(
@@ -574,21 +578,21 @@ def test_update_packages_continue_on_fail_set_to_true(
 
 
 def test_get_outdated_packages(
-    test_packages: list[pip_review._Package],
+    test_packages: list[pip_review._OutdatedPackageInfo],
     test_subprocess_output: bytes,
 ) -> None:
     with mock.patch(
         "subprocess.check_output",
         return_value=test_subprocess_output,
     ):
-        outdated_packages: list[pip_review._Package] = (
+        outdated_packages: list[pip_review._OutdatedPackageInfo] = (
             pip_review._get_outdated_packages([])
         )
     assert outdated_packages == test_packages
 
 
 def test_column_fields() -> None:
-    assert pip_review._Column._fields == (
+    assert pip_review._ColumnSpec._fields == (
         "title",
         "field",
     )
@@ -603,7 +607,10 @@ def test_column_fields() -> None:
         "latest_filetype",
     ],
 )
-def test_extract_column(test_packages: list[pip_review._Package], field: str) -> None:
+def test_extract_column(
+    test_packages: list[pip_review._OutdatedPackageInfo],
+    field: str,
+) -> None:
     assert pip_review._extract_column(test_packages, field, "TEST") == [
         "TEST",
         getattr(test_packages[0], field),
@@ -611,7 +618,7 @@ def test_extract_column(test_packages: list[pip_review._Package], field: str) ->
     ]
 
 
-def test_extract_table(test_packages: list[pip_review._Package]) -> None:
+def test_extract_table(test_packages: list[pip_review._OutdatedPackageInfo]) -> None:
     expected_result: list[list[str]] = [
         ["Package", "test1", "test2"],
         ["Version", "1.0.0", "1.9.9"],
