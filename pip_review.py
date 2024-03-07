@@ -8,6 +8,7 @@ __title__: Final[str] = "pip-review"
 import argparse
 import json
 import logging
+import os
 import subprocess  # nosec
 import sys
 from functools import partial
@@ -308,6 +309,25 @@ def _get_outdated_packages(
     return packages
 
 
+def _get_constraint_file() -> Path | None:
+    constraint_file: str | None = os.getenv("PIP_CONSTRAINT")
+    return Path(constraint_file).resolve() if constraint_file else None
+
+
+def _get_constraint_packages(
+    constraint_file: Path | None,
+) -> set[str]:
+    constraint_packages: set[str] = set()
+
+    if constraint_file is None:
+        return constraint_packages
+
+    for line in constraint_file.read_text(encoding="utf-8").splitlines():
+        pkg_name, *_ = line.partition("=")
+        constraint_packages.add(pkg_name.strip())
+    return constraint_packages
+
+
 class _ColumnSpec(NamedTuple):
     title: str
     field: str
@@ -412,14 +432,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    constraint_file: Path | None = _get_constraint_file()
+    constraint_packages: set[str] = _get_constraint_packages(
+        constraint_file,
+    )
+    logger.debug("Constraint file: %s", constraint_file)
+    logger.debug("Constraint packages: %s", constraint_packages)
+
     selected: list[_OutdatedPackageInfo] = []
     for pkg in outdated:
-        logger.info(
-            "%s==%s is available (you have %s)",
-            pkg.name,
-            pkg.latest_version,
-            pkg.version,
-        )
+        if pkg.name in constraint_packages:
+            logger.info(
+                "%s==%s is available (you have %s, constraint)",
+                pkg.name,
+                pkg.latest_version,
+                pkg.version,
+            )
+        else:
+            logger.info(
+                "%s==%s is available (you have %s)",
+                pkg.name,
+                pkg.latest_version,
+                pkg.version,
+            )
+
         if args.interactive:
             answer: str = _ask_to_install()
             if answer in {"y", "a"}:

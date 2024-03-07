@@ -11,7 +11,7 @@ import pytest
 
 import pip_review
 
-# pylint: disable=W0212, E1101, W0621
+# pylint: disable=W0212, E1101, W0621, C0302
 
 
 @pytest.fixture()
@@ -591,6 +591,36 @@ def test_get_outdated_packages(
     assert outdated_packages == test_packages
 
 
+def test_get_constraint_file_constraint_file_found(tmp_path: Path) -> None:
+    test_constraint_file: Path = tmp_path / "constraint.txt"
+    with mock.patch("os.getenv", return_value=str(test_constraint_file)):
+        constraint_file: Path | None = pip_review._get_constraint_file()
+    assert test_constraint_file == constraint_file
+
+
+def test_get_constraint_file_no_constraint_file_found() -> None:
+    with mock.patch("os.getenv", return_value=None):
+        constraint_file: Path | None = pip_review._get_constraint_file()
+    assert constraint_file is None
+
+
+def test_get_constraint_packages_with_constraint_file(tmp_path: Path) -> None:
+    test_constraint_file: Path = tmp_path / "constraint.txt"
+    test_constraint_file.write_text("test1==1.0.0\ntest2=1.9.9\n", encoding="utf-8")
+
+    constraint_packages: set[str] = pip_review._get_constraint_packages(
+        test_constraint_file,
+    )
+    assert constraint_packages == {"test1", "test2"}
+
+
+def test_get_constraint_packages_no_constraint_file() -> None:
+    constraint_packages: set[str] = pip_review._get_constraint_packages(
+        None,
+    )
+    assert constraint_packages == set()
+
+
 def test_column_fields() -> None:
     assert pip_review._ColumnSpec._fields == (
         "title",
@@ -732,6 +762,28 @@ def test_main_default_output_with_outdated_packages(
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
+    )
+    assert exit_code == 0
+
+
+def test_main_default_output_with_outdated_packages_and_constraints(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    test_subprocess_output: bytes,
+) -> None:
+    test_constraint_file: Path = tmp_path / "constraint.txt"
+    test_constraint_file.write_text("test2=1.9.9\n", encoding="utf-8")
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("os.getenv", return_value=str(test_constraint_file)):
+        exit_code: int = pip_review.main([])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9, constraint)\n"
+        in capsys.readouterr().out
     )
     assert exit_code == 0
 
@@ -989,6 +1041,135 @@ def test_main_interactive_deny_all(
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
+    )
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("user_input", ["y", "a"])
+@pytest.mark.parametrize("arg", ["--interactive", "-i"])
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_constraints(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    test_subprocess_output: bytes,
+    user_input: str,
+    arg: str,
+) -> None:
+    test_constraint_file: Path = tmp_path / "constraint.txt"
+    test_constraint_file.write_text("test2=1.9.9\n", encoding="utf-8")
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "os.getenv",
+        return_value=str(test_constraint_file),
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9, constraint)\n"
+        in capsys.readouterr().out
+    )
+    expected_cmd: list[str] = [
+        *pip_review._PIP_CMD,
+        "install",
+        "-U",
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("user_input", ["y", "a"])
+@pytest.mark.parametrize("arg", ["--interactive", "-i"])
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_constraints(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    test_subprocess_output: bytes,
+    user_input: str,
+    arg: str,
+) -> None:
+    test_constraint_file: Path = tmp_path / "constraint.txt"
+    test_constraint_file.write_text("test2=1.9.9\n", encoding="utf-8")
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "os.getenv",
+        return_value=str(test_constraint_file),
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg, "--continue-on-fail"])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9, constraint)\n"
+        in capsys.readouterr().out
+    )
+    expected_calls: list[mock._Call] = [
+        mock.call(
+            [
+                *pip_review._PIP_CMD,
+                "install",
+                "-U",
+                "test1",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+        mock.call(
+            [
+                *pip_review._PIP_CMD,
+                "install",
+                "-U",
+                "test2",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+    ]
+    mock_subprocess_call.assert_has_calls(expected_calls)
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("user_input", ["n", "q"])
+@pytest.mark.parametrize("arg", ["--interactive", "-i"])
+def test_main_interactive_deny_all_with_constraints(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    test_subprocess_output: bytes,
+    user_input: str,
+    arg: str,
+) -> None:
+    test_constraint_file: Path = tmp_path / "constraint.txt"
+    test_constraint_file.write_text("test2=1.9.9\n", encoding="utf-8")
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=test_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "os.getenv",
+        return_value=str(test_constraint_file),
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+
+    assert (
+        "test1==1.1.0 is available (you have 1.0.0)\n"
+        "test2==2.0.0 is available (you have 1.9.9, constraint)\n"
+        in capsys.readouterr().out
     )
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
