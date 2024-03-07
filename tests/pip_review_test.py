@@ -700,14 +700,14 @@ def test_format_table_value_error_when_columns_are_not_the_same_length() -> None
 @pytest.mark.parametrize(
     ("args", "err_msg"),
     [
-        (["--raw", "--auto"], "--raw and --auto cannot be used together\n"),
+        (["--raw", "--auto"], "'--raw' and '--auto' cannot be used together\n"),
         (
             ["--raw", "--interactive"],
-            "--raw and --interactive cannot be used together\n",
+            "'--raw' and '--interactive' cannot be used together\n",
         ),
         (
             ["--auto", "--interactive"],
-            "--auto and --interactive cannot be used together\n",
+            "'--auto' and '--interactive' cannot be used together\n",
         ),
     ],
 )
