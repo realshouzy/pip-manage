@@ -28,9 +28,9 @@ if TYPE_CHECKING:
 _EPILOG: Final[
     str
 ] = """
-Unrecognised arguments will be forwarded to pip list --outdated and
-pip install, so you can pass things such as --user, --pre and --timeout
-and they will do what you expect. See pip list -h and pip install -h
+Unrecognised arguments will be forwarded to 'pip list --outdated' and
+pip install, so you can pass things such as '--user', '--pre' and '--timeout'
+and they will do what you expect. See 'pip list -h' and 'pip install -h'
 for a full overview of the options.
 """
 
@@ -334,7 +334,7 @@ class _ColumnSpec(NamedTuple):
 
 
 # nicer headings for the columns in the oudated package table
-_DEFAULT_COLUMNS: Final[tuple[_ColumnSpec, ...]] = (
+_DEFAULT_COLUMN_SPECS: Final[tuple[_ColumnSpec, ...]] = (
     _ColumnSpec("Package", "name"),
     _ColumnSpec("Version", "version"),
     _ColumnSpec("Latest", "latest_version"),
@@ -355,9 +355,9 @@ def _extract_column(
 
 def _extract_table(
     outdated: list[_OutdatedPackageInfo],
-    columns: tuple[_ColumnSpec, ...] = _DEFAULT_COLUMNS,
+    column_specs: tuple[_ColumnSpec, ...] = _DEFAULT_COLUMN_SPECS,
 ) -> list[list[str]]:
-    return [_extract_column(outdated, field, title) for title, field in columns]
+    return [_extract_column(outdated, field, title) for title, field in column_specs]
 
 
 # Next two functions describe how to format any table. Note that
@@ -394,15 +394,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.debug("Arguments forwarded to 'pip install': %s", install_args)
 
     if args.raw and args.auto:
-        logger.error("--raw and --auto cannot be used together")
+        logger.error("'--raw' and '--auto' cannot be used together")
         return 1
 
     if args.raw and args.interactive:
-        logger.error("--raw and --interactive cannot be used together")
+        logger.error("'--raw' and '--interactive' cannot be used together")
         return 1
 
     if args.auto and args.interactive:
-        logger.error("--auto and --interactive cannot be used together")
+        logger.error("'--auto' and '--interactive' cannot be used together")
         return 1
 
     outdated: list[_OutdatedPackageInfo] = _get_outdated_packages(list_args)

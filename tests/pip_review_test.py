@@ -37,9 +37,9 @@ def test_subprocess_output() -> bytes:
         pytest.param(
             pip_review._EPILOG,
             """
-Unrecognised arguments will be forwarded to pip list --outdated and
-pip install, so you can pass things such as --user, --pre and --timeout
-and they will do what you expect. See pip list -h and pip install -h
+Unrecognised arguments will be forwarded to 'pip list --outdated' and
+pip install, so you can pass things such as '--user', '--pre' and '--timeout'
+and they will do what you expect. See 'pip list -h' and 'pip install -h'
 for a full overview of the options.
 """,
             id="_EPILOG",
@@ -116,7 +116,7 @@ for a full overview of the options.
             id="_PIP_CMD",
         ),
         pytest.param(
-            pip_review._DEFAULT_COLUMNS,
+            pip_review._DEFAULT_COLUMN_SPECS,
             (
                 pip_review._ColumnSpec("Package", "name"),
                 pip_review._ColumnSpec("Version", "version"),
