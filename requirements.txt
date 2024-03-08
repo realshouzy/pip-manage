@@ -1,2 +1,2 @@
 pip>9.0
-typing_extensions>=4.6.0;python_version<"3.12"
+typing_extensions>=4.4.0;python_version<"3.12"
