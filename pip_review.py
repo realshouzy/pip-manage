@@ -6,12 +6,12 @@ __version__: Final[str] = "1.4.0"
 __title__: Final[str] = "pip-review"
 
 import argparse
+import dataclasses
 import json
 import logging
 import os
 import subprocess  # nosec
 import sys
-from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple, TextIO
@@ -251,13 +251,17 @@ class _InteractiveAsker:
 _ask_to_install: partial[str] = partial(_InteractiveAsker().ask, prompt="Upgrade now?")
 
 
-@dataclass(slots=True)
+@dataclasses.dataclass
 class _OutdatedPackage:
     name: str
     version: str
     latest_version: str
     latest_filetype: str
-    constraint_version: set[str] = field(default_factory=set)
+    constraints: set[str] = dataclasses.field(default_factory=set)
+
+    @property
+    def constraints_display(self) -> str:
+        return ", ".join(self.constraints) if self.constraints else str(None)
 
     @classmethod
     def from_json(cls, json_obj: dict[str, str]) -> Self:
@@ -339,7 +343,7 @@ def _get_constraints_files_from_args(args: list[str]) -> list[Path]:
     return constraints_files
 
 
-def _set_constraints_versions_of_outdated_pkgs(
+def _set_constraints_of_outdated_pkgs(
     constraints_files: list[Path],
     outdated: list[_OutdatedPackage],
 ) -> None:
@@ -347,8 +351,8 @@ def _set_constraints_versions_of_outdated_pkgs(
         for line in file.read_text(encoding="utf-8").splitlines():
             pkg_name, _, constraint_version = line.partition("==")
             for pkg in outdated:
-                if pkg.name == pkg_name:
-                    pkg.constraint_version.add(constraint_version)
+                if pkg.name == pkg_name.strip():
+                    pkg.constraints.add(constraint_version.strip())
 
 
 class _ColumnSpec(NamedTuple):
@@ -362,6 +366,7 @@ _DEFAULT_COLUMN_SPECS: Final[tuple[_ColumnSpec, ...]] = (
     _ColumnSpec("Version", "version"),
     _ColumnSpec("Latest", "latest_version"),
     _ColumnSpec("Type", "latest_filetype"),
+    _ColumnSpec("Constraints", "constraints_display"),
 )
 
 # Next two functions describe how to collect data for the table.
@@ -370,10 +375,10 @@ _DEFAULT_COLUMN_SPECS: Final[tuple[_ColumnSpec, ...]] = (
 
 def _extract_column(
     data: list[_OutdatedPackage],
-    field_: str,
+    field: str,
     title: str,
 ) -> list[str]:
-    return [title, *[getattr(item, field_) for item in data]]
+    return [title, *[getattr(item, field) for item in data]]
 
 
 def _extract_table(
@@ -446,7 +451,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     constraints_files: list[Path] = _get_constraints_files(install_args)
 
-    _set_constraints_versions_of_outdated_pkgs(constraints_files, outdated)
+    _set_constraints_of_outdated_pkgs(constraints_files, outdated)
 
     logger.debug("Constraints files: %s", constraints_files)
     logger.debug(
@@ -467,13 +472,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     selected: list[_OutdatedPackage] = []
     for pkg in outdated:
-        if pkg.constraint_version:
+        if pkg.constraints:
             logger.info(
                 "%s==%s is available (you have %s) [Constraint to %s]",
                 pkg.name,
                 pkg.latest_version,
                 pkg.version,
-                ", ".join(pkg.constraint_version),
+                pkg.constraints_display,
             )
         else:
             logger.info(

@@ -122,6 +122,10 @@ for a full overview of the options.
                 pip_review._ColumnSpec("Version", "version"),
                 pip_review._ColumnSpec("Latest", "latest_version"),
                 pip_review._ColumnSpec("Type", "latest_filetype"),
+                pip_review._ColumnSpec(
+                    "Constraints",
+                    "constraints_display",
+                ),
             ),
             id="_DEFAULT_COLUMNS",
         ),
@@ -426,6 +430,29 @@ def test_ask_to_install_with_last_answer_and_invalid_input(last_answer: str) -> 
 
 
 @pytest.mark.parametrize(
+    ("outdated_package", "expected"),
+    [
+        (
+            pip_review._OutdatedPackage(
+                "test",
+                "1.0.0",
+                "1.1.0",
+                "wheel",
+                {"1.0.0", "1.1.0"},
+            ),
+            ", ".join({"1.0.0", "1.1.0"}),
+        ),
+        (pip_review._OutdatedPackage("test", "1.0.0", "1.1.0", "wheel"), "None"),
+    ],
+)
+def test_outdated_package_constraints_display(
+    outdated_package: pip_review._OutdatedPackage,
+    expected: str,
+) -> None:
+    assert outdated_package.constraints_display == expected
+
+
+@pytest.mark.parametrize(
     ("json_obj", "expected"),
     [
         pytest.param(
@@ -496,7 +523,7 @@ def test_ask_to_install_with_last_answer_and_invalid_input(last_answer: str) -> 
         ),
     ],
 )
-def test_package_from_json_obj(
+def test_outdated_package_from_json_obj(
     json_obj: dict[str, str],
     expected: pip_review._OutdatedPackage,
 ) -> None:
@@ -704,24 +731,24 @@ def test_get_constraints_files_with_named_args_and_dont_ignore_constraints_env_v
         ]
 
 
-def test_set_constraints_versions_of_outdated_pkgs(
+def test_set_constraints_of_outdated_pkgs(
     tmp_path: Path,
     sample_packages: list[pip_review._OutdatedPackage],
 ) -> None:
     constraints_file: Path = tmp_path / "constraints_file.txt"
     constraints_file.write_text("test2==1.9.9.9", encoding="utf-8")
 
-    assert not sample_packages[0].constraint_version
-    assert not sample_packages[1].constraint_version
-    pip_review._set_constraints_versions_of_outdated_pkgs(
+    assert not sample_packages[0].constraints
+    assert not sample_packages[1].constraints
+    pip_review._set_constraints_of_outdated_pkgs(
         [constraints_file],
         sample_packages,
     )
-    assert not sample_packages[0].constraint_version
-    assert sample_packages[1].constraint_version == {"1.9.9.9"}
+    assert not sample_packages[0].constraints
+    assert sample_packages[1].constraints == {"1.9.9.9"}
 
 
-def test_set_constraints_versions_of_outdated_pkgs_multiple_constraints_version(
+def test_set_constraints_of_outdated_pkgs_multiple_constraints(
     tmp_path: Path,
     sample_packages: list[pip_review._OutdatedPackage],
 ) -> None:
@@ -730,14 +757,14 @@ def test_set_constraints_versions_of_outdated_pkgs_multiple_constraints_version(
     constraints_file2: Path = tmp_path / "constraints_file2.txt"
     constraints_file2.write_text("test2==1.9.9.9", encoding="utf-8")
 
-    assert not sample_packages[0].constraint_version
-    assert not sample_packages[1].constraint_version
-    pip_review._set_constraints_versions_of_outdated_pkgs(
+    assert not sample_packages[0].constraints
+    assert not sample_packages[1].constraints
+    pip_review._set_constraints_of_outdated_pkgs(
         [constraints_file1, constraints_file2],
         sample_packages,
     )
-    assert not sample_packages[0].constraint_version
-    assert sample_packages[1].constraint_version == {"1.9.9.8", "1.9.9.9"}
+    assert not sample_packages[0].constraints
+    assert sample_packages[1].constraints == {"1.9.9.8", "1.9.9.9"}
 
 
 def test_column_fields() -> None:
@@ -767,12 +794,29 @@ def test_extract_column(
     ]
 
 
-def test_extract_table(sample_packages: list[pip_review._OutdatedPackage]) -> None:
+def test_extract_table_without_constraints(
+    sample_packages: list[pip_review._OutdatedPackage],
+) -> None:
     expected_result: list[list[str]] = [
         ["Package", "test1", "test2"],
         ["Version", "1.0.0", "1.9.9"],
         ["Latest", "1.1.0", "2.0.0"],
         ["Type", "wheel", "wheel"],
+        ["Constraints", "None", "None"],
+    ]
+    assert pip_review._extract_table(sample_packages) == expected_result
+
+
+def test_extract_table_with_constraints(
+    sample_packages: list[pip_review._OutdatedPackage],
+) -> None:
+    sample_packages[1].constraints = {"1.9.9.9"}
+    expected_result: list[list[str]] = [
+        ["Package", "test1", "test2"],
+        ["Version", "1.0.0", "1.9.9"],
+        ["Latest", "1.1.0", "2.0.0"],
+        ["Type", "wheel", "wheel"],
+        ["Constraints", "None", "1.9.9.9"],
     ]
     assert pip_review._extract_table(sample_packages) == expected_result
 
@@ -798,9 +842,10 @@ def test_format_table() -> None:
         ["Version", "1.0.0", "1.9.9"],
         ["Latest", "1.1.0", "2.0.0"],
         ["Type", "wheel", "wheel"],
+        ["Constraints", "None", "1.1.0"],
     ]
     expected_result: str = (
-        "Package Version Latest Type \n----------------------------\ntest1   1.0.0   1.1.0  wheel\ntest2   1.9.9   2.0.0  wheel\n----------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel 1.1.0      \n----------------------------------------"  # noqa: E501
     )
     assert pip_review.format_table(test_columns) == expected_result
 
@@ -811,6 +856,7 @@ def test_format_table_value_error_when_columns_are_not_the_same_length() -> None
         ["Version", "1.0.0", "1.9.9"],
         ["Latest", "1.1.0", "2.0.0"],
         ["Type", "wheel"],
+        ["Constraints", "None", "1.1.0"],
     ]
     with pytest.raises(ValueError, match=r"\bNot all columns are the same length\b"):
         pip_review.format_table(test_columns)
@@ -861,7 +907,7 @@ def test_main_no_outdated_packages(
     with mock.patch(
         "subprocess.check_output",
         return_value=b"{}",
-    ):
+    ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main(args)
 
     assert "Everything up-to-date" in capsys.readouterr().out
@@ -875,7 +921,7 @@ def test_main_default_output_with_outdated_packages(
     with mock.patch(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
-    ):
+    ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main([])
 
     assert (
@@ -951,9 +997,10 @@ def test_main_default_output_with_outdated_packages_and_positional_arg_constrain
             [constraint_arg, str(constraints_file2)],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     assert exit_code == 0
@@ -1003,9 +1050,10 @@ def test_main_default_output_with_outdated_packages_and_named_arg_constraints_fi
             [f"{constraint_arg}={constraints_file2}"],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     assert exit_code == 0
@@ -1020,7 +1068,7 @@ def test_main_freeze_outdated_packages(
     with mock.patch(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
-    ):
+    ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main(
             ["--freeze-outdated-packages", "--freeze-file", str(tmp_file)],
         )
@@ -1047,7 +1095,7 @@ def test_main_with_raw(
 
 @pytest.mark.parametrize("upgrade_arg", ["--auto", "-a", "-i", "--interactive"])
 @pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
-def test_main_preview_runs_when_upgrading(
+def test_main_preview_runs_when_upgrading_without_constraints(
     capsys: pytest.CaptureFixture[str],
     sample_subprocess_output: bytes,
     preview_arg: str,
@@ -1057,11 +1105,59 @@ def test_main_preview_runs_when_upgrading(
     with mock.patch(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
-    ), mock.patch("subprocess.call") as mock_subprocess_call:
+    ), mock.patch("pip_review._ask_to_install", return_value="a"), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
         exit_code: int = pip_review.main([preview_arg, upgrade_arg])
 
     expected_result: str = (
-        "Package Version Latest Type \n----------------------------\ntest1   1.0.0   1.1.0  wheel\ntest2   1.9.9   2.0.0  wheel\n----------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel None       \n----------------------------------------"  # noqa: E501
+    )
+    assert expected_result in capsys.readouterr().out
+    expected_cmd: list[str] = [
+        *pip_review._PIP_CMD,
+        "install",
+        "-U",
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    assert exit_code == 0
+
+
+@pytest.mark.parametrize("upgrade_arg", ["--auto", "-a", "-i", "--interactive"])
+@pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
+def test_main_preview_runs_when_upgrading_with_constraints(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    sample_subprocess_output: bytes,
+    preview_arg: str,
+    upgrade_arg: str,
+) -> None:
+    # pylint: disable=C0301
+    constraints_file: Path = tmp_path / "constraints.txt"
+    constraints_file.write_text("test2==1.9.9.9\n", encoding="utf-8")
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value="a"), mock.patch(
+        "os.getenv",
+        return_value=str(constraints_file),
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([preview_arg, upgrade_arg])
+
+    expected_result: str = (
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel 1.9.9.9    \n----------------------------------------"  # noqa: E501
     )
     assert expected_result in capsys.readouterr().out
     expected_cmd: list[str] = [
@@ -1089,11 +1185,14 @@ def test_main_preview_does_not_run_when_not_upgrading(
     with mock.patch(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
+    ), mock.patch("pip_review._ask_to_install", return_value="q"), mock.patch(
+        "os.getenv",
+        return_value=None,
     ):
         exit_code: int = pip_review.main([preview_arg])
 
     expected_result: str = (
-        "Package Version Latest Type \n----------------------------\ntest1   1.0.0   1.1.0  wheel\ntest2   1.9.9   2.0.0  wheel\n----------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel None       \n----------------------------------------"  # noqa: E501
     )
     assert expected_result not in capsys.readouterr().out
     assert exit_code == 0
@@ -1108,7 +1207,12 @@ def test_main_auto_continue_on_fail_set_to_false(
     with mock.patch(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
-    ), mock.patch("subprocess.call") as mock_subprocess_call:
+    ), mock.patch("pip_review._ask_to_install", return_value="a"), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
 
     expected_cmd: list[str] = [
@@ -1135,7 +1239,12 @@ def test_main_auto_continue_on_fail_set_to_true(
     with mock.patch(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
-    ), mock.patch("subprocess.call") as mock_subprocess_call:
+    ), mock.patch("pip_review._ask_to_install", return_value="a"), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg, "--continue-on-fail"])
 
     expected_calls: list[mock._Call] = [
@@ -1176,6 +1285,9 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
@@ -1211,6 +1323,9 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg, "--continue-on-fail"])
@@ -1257,6 +1372,9 @@ def test_main_interactive_deny_all(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch("pip_review._ask_to_install", return_value=user_input), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
@@ -1734,9 +1852,10 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
             [interactive_arg, constraint_arg, str(constraints_file2)],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     expected_cmd: list[str] = [
@@ -1790,9 +1909,10 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
             ],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     expected_calls: list[mock._Call] = [
@@ -1858,9 +1978,10 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_cons
             ],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     mock_subprocess_call.assert_not_called()
@@ -1896,9 +2017,10 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
             [interactive_arg, f"{constraint_arg}={constraints_file2}"],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     expected_cmd: list[str] = [
@@ -1950,9 +2072,10 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
             ],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     expected_calls: list[mock._Call] = [
@@ -2015,9 +2138,10 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file_and_constrain
             ],
         )
 
+    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]\n"
+        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
         in capsys.readouterr().out
     )
     mock_subprocess_call.assert_not_called()
