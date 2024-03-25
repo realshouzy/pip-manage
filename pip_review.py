@@ -11,6 +11,7 @@ import logging
 import os
 import subprocess  # nosec
 import sys
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple, TextIO
@@ -250,29 +251,31 @@ class _InteractiveAsker:
 _ask_to_install: partial[str] = partial(_InteractiveAsker().ask, prompt="Upgrade now?")
 
 
-class _OutdatedPackageInfo(NamedTuple):
+@dataclass(slots=True)
+class _OutdatedPackage:
     name: str
     version: str
     latest_version: str
     latest_filetype: str
+    constraint_version: set[str] = field(default_factory=set)
 
     @classmethod
-    def from_dct(cls, dct: dict[str, str]) -> Self:
+    def from_json(cls, json_obj: dict[str, str]) -> Self:
         return cls(
-            dct.get("name", "Unknown"),
-            dct.get("version", "Unknown"),
-            dct.get("latest_version", "Unknown"),
-            dct.get("latest_filetype", "Unknown"),
+            json_obj.get("name", "Unknown"),
+            json_obj.get("version", "Unknown"),
+            json_obj.get("latest_version", "Unknown"),
+            json_obj.get("latest_filetype", "Unknown"),
         )
 
 
-def freeze_outdated_packages(file: Path, packages: list[_OutdatedPackageInfo]) -> None:
+def freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
     outdated_packages: str = "\n".join(f"{pkg.name}=={pkg.version}" for pkg in packages)
     file.write_text(f"{outdated_packages}\n", encoding="utf-8")
 
 
 def update_packages(
-    packages: list[_OutdatedPackageInfo],
+    packages: list[_OutdatedPackage],
     forwarded: list[str],
     *,
     continue_on_fail: bool,
@@ -293,7 +296,7 @@ def update_packages(
 
 def _get_outdated_packages(
     forwarded: list[str],
-) -> list[_OutdatedPackageInfo]:
+) -> list[_OutdatedPackage]:
     command: list[str] = [
         *_PIP_CMD,
         "list",
@@ -303,29 +306,49 @@ def _get_outdated_packages(
         *forwarded,
     ]
     output: str = subprocess.check_output(command).decode("utf-8")  # nosec
-    packages: list[_OutdatedPackageInfo] = [
-        _OutdatedPackageInfo.from_dct(pkg) for pkg in json.loads(output)
+    packages: list[_OutdatedPackage] = [
+        _OutdatedPackage.from_json(json_obj) for json_obj in json.loads(output)
     ]
     return packages
 
 
-def _get_constraint_file() -> Path | None:
-    constraint_file: str | None = os.getenv("PIP_CONSTRAINT")
-    return Path(constraint_file).resolve() if constraint_file else None
+def _get_constraints_files(
+    args: list[str],
+) -> list[Path]:
+    constraints_files: list[Path] = _get_constraints_files_from_args(args)
+    if (env_constraints_file := _get_constraints_files_from_env()) is not None:
+        constraints_files.append(env_constraints_file)
+    return constraints_files
 
 
-def _get_constraint_packages(
-    constraint_file: Path | None,
-) -> set[str]:
-    constraint_packages: set[str] = set()
+def _get_constraints_files_from_env() -> Path | None:
+    constraints_file: str | None = os.getenv("PIP_CONSTRAINT")
+    return Path(constraints_file).resolve() if constraints_file is not None else None
 
-    if constraint_file is None:
-        return constraint_packages
 
-    for line in constraint_file.read_text(encoding="utf-8").splitlines():
-        pkg_name, *_ = line.partition("=")
-        constraint_packages.add(pkg_name.strip())
-    return constraint_packages
+def _get_constraints_files_from_args(args: list[str]) -> list[Path]:
+    constraints_files: list[Path] = []
+
+    for idx, arg in enumerate(args):
+        if arg in {"--constraint", "-c"}:
+            constraints_files.append(Path(args[idx + 1]).resolve())
+        elif "--constraint=" in arg or "-c=" in arg:
+            *_, constraints_file = arg.partition("=")
+            constraints_files.append(Path(constraints_file).resolve())
+
+    return constraints_files
+
+
+def _set_constraints_versions_of_outdated_pkgs(
+    constraints_files: list[Path],
+    outdated: list[_OutdatedPackage],
+) -> None:
+    for file in constraints_files:
+        for line in file.read_text(encoding="utf-8").splitlines():
+            pkg_name, _, constraint_version = line.partition("==")
+            for pkg in outdated:
+                if pkg.name == pkg_name:
+                    pkg.constraint_version.add(constraint_version)
 
 
 class _ColumnSpec(NamedTuple):
@@ -346,15 +369,15 @@ _DEFAULT_COLUMN_SPECS: Final[tuple[_ColumnSpec, ...]] = (
 
 
 def _extract_column(
-    data: list[_OutdatedPackageInfo],
-    field: str,
+    data: list[_OutdatedPackage],
+    field_: str,
     title: str,
 ) -> list[str]:
-    return [title, *[getattr(item, field) for item in data]]
+    return [title, *[getattr(item, field_) for item in data]]
 
 
 def _extract_table(
-    outdated: list[_OutdatedPackageInfo],
+    outdated: list[_OutdatedPackage],
     column_specs: tuple[_ColumnSpec, ...] = _DEFAULT_COLUMN_SPECS,
 ) -> list[list[str]]:
     return [_extract_column(outdated, field, title) for title, field in column_specs]
@@ -405,7 +428,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.error("'--auto' and '--interactive' cannot be used together")
         return 1
 
-    outdated: list[_OutdatedPackageInfo] = _get_outdated_packages(list_args)
+    outdated: list[_OutdatedPackage] = _get_outdated_packages(list_args)
     logger.debug("Outdated packages: %s", outdated)
 
     if not outdated and not args.raw:
@@ -421,6 +444,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             logger.info("%s==%s", pkg.name, pkg.latest_version)
         return 0
 
+    constraints_files: list[Path] = _get_constraints_files(install_args)
+
+    _set_constraints_versions_of_outdated_pkgs(constraints_files, outdated)
+
+    logger.debug("Constraints files: %s", constraints_files)
+    logger.debug(
+        "Outdated packages with new set constraints: %s",
+        outdated,
+    )
+
     if args.preview and (args.auto or args.interactive):
         logger.info(format_table(_extract_table(outdated)))
 
@@ -432,21 +465,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
-    constraint_file: Path | None = _get_constraint_file()
-    constraint_packages: set[str] = _get_constraint_packages(
-        constraint_file,
-    )
-    logger.debug("Constraint file: %s", constraint_file)
-    logger.debug("Constraint packages: %s", constraint_packages)
-
-    selected: list[_OutdatedPackageInfo] = []
+    selected: list[_OutdatedPackage] = []
     for pkg in outdated:
-        if pkg.name in constraint_packages:
+        if pkg.constraint_version:
             logger.info(
-                "%s==%s is available (you have %s, constraint)",
+                "%s==%s is available (you have %s) [Constraint to %s]",
                 pkg.name,
                 pkg.latest_version,
                 pkg.version,
+                ", ".join(pkg.constraint_version),
             )
         else:
             logger.info(

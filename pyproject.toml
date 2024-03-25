@@ -61,9 +61,6 @@ license-files = ["LICENSE.txt"]
 zip-safe = false
 platforms = ["any"]
 
-# [tool.setuptools.package-data]
-# auto_file_sorter = ["py.typed"]
-
 [tool.setuptools.dynamic]
 version = { attr = "pip_review.__version__" }
 dependencies = { file = "requirements.txt" }
@@ -128,7 +125,7 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint.extend-per-file-ignores]
-"./tests/*_test.py" = ["S101", "SLF001"]
+"./tests/*_test.py" = ["S101", "SLF001", "PLR0913"]
 "./tests/*.py" = ["D104"]
 
 [tool.ruff.lint.isort]
