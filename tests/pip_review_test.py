@@ -440,7 +440,7 @@ def test_ask_to_install_with_last_answer_and_invalid_input(last_answer: str) -> 
                 "wheel",
                 {"1.0.0", "1.1.0"},
             ),
-            ", ".join({"1.0.0", "1.1.0"}),
+            ", ".join(sorted({"1.0.0", "1.1.0"})),
         ),
         (pip_review._OutdatedPackage("test", "1.0.0", "1.1.0", "wheel"), "None"),
     ],
@@ -997,7 +997,7 @@ def test_main_default_output_with_outdated_packages_and_positional_arg_constrain
             [constraint_arg, str(constraints_file2)],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -1050,7 +1050,7 @@ def test_main_default_output_with_outdated_packages_and_named_arg_constraints_fi
             [f"{constraint_arg}={constraints_file2}"],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -1852,7 +1852,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
             [interactive_arg, constraint_arg, str(constraints_file2)],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -1909,7 +1909,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
             ],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -1978,7 +1978,7 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_cons
             ],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -2017,7 +2017,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
             [interactive_arg, f"{constraint_arg}={constraints_file2}"],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -2072,7 +2072,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
             ],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
@@ -2138,7 +2138,7 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file_and_constrain
             ],
         )
 
-    constraints: str = ", ".join({"1.9.9.8", "1.9.9.9"})
+    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
     assert (
         "test1==1.1.0 is available (you have 1.0.0)\n"
         f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"

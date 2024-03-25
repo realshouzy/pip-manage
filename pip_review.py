@@ -261,7 +261,7 @@ class _OutdatedPackage:
 
     @property
     def constraints_display(self) -> str:
-        return ", ".join(self.constraints) if self.constraints else str(None)
+        return ", ".join(sorted(self.constraints)) if self.constraints else str(None)
 
     @classmethod
     def from_json(cls, json_obj: dict[str, str]) -> Self:
