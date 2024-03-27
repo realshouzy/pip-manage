@@ -154,7 +154,7 @@ def _parse_args(
         "-f",
         metavar="FILE_PATH",
         type=lambda path: Path(path.strip()).resolve(),
-        default=Path("requirements.txt").resolve(),
+        default=Path("outdated.txt").resolve(),
         help="Specify the file path to store the frozen packages",
     )
     parser.add_argument(
