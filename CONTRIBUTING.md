@@ -1,21 +1,93 @@
-# How to contribute to `pip-review`
+# Contributing
 
-Please **do** contribute! In fact, please take over! See https://github.com/jgonggrijp/pip-review/issues/76.
+Contributions are welcome and highly appreciated!
 
-I (@jgonggrijp) will not just abondon `pip-review`, but I am not using it anymore myself and I cannot dedicate any time to actively maintaining it, other than accepting pull requests and maybe issuing a new release once in a while. So if you see a way to improve `pip-review`, whether by fixing a bug or by adding a feature, please go ahead and submit a pull request.
+## Feature suggestions and bug reports
 
+If you have any feature suggestions or encounter any bugs, please create an [issue](https://github.com/realshouzy/pip-review/issues) in the project's repository. The case will be reviewed and if it is legitimate, you are welcome to work on addressing the issue and creating a [pull request](https://github.com/realshouzy/pip-review/pulls).
 
-## Suggestions
+## TODO
 
-Any kind of contribution is welcome; nothing is "off limits". However, for those who would like some guidance:
+Check out the [TODO](/TODO.md) file for a list of pending tasks and future improvements.
 
-  - Look for issues with the [help wanted](https://github.com/jgonggrijp/pip-review/labels/help%20wanted), [question](https://github.com/jgonggrijp/pip-review/labels/question) or [poll](https://github.com/jgonggrijp/pip-review/labels/poll) label. In the latter case, if you have an opinion, vote by adding an emoticon of your choice to the opening post. Feel free to explain your vote in a response or to thumbs-up another response that explains your opinion.
+## Getting started
 
+To start working on this project, first, clone the repository:
 
-## The fine print
+```bash
+git clone https://github.com/realshouzy/pip-review.git && cd pip-review
+```
 
-This repo ([jgonggrijp/pip-review](https://github.com/jgonggrijp/pip-review)) uses [gitflow](https://github.com/nvie/gitflow). Please submit pull requests to the `develop` branch.
+### Setting up a virtual environment
 
-To maintain consistent coding style and formatting across the project, an [``EditorConfig`` file](/.editorconfig) has been set up, in order to guarantee that all contributors use the same settings for indentation, character encoding, line endings etc.
+It is highly recommended to utilize a virtual environment to develop on this project. The easiest way to set up a virtual environment is by using tox:
 
-Additionally, please ensure that lines of code do not exceed a **maximum length of 79 characters** to further enhance readability and consistency of the project.
+```bash
+tox --devenv venv
+```
+
+Otherwise you could also use [``virtualenv``](https://virtualenv.pypa.io/en/latest) or [``venv``](https://docs.python.org/3/library/venv.html).
+
+#### Install development dependencies (only necessary for ``virtualenv`` or ``venv``)
+
+To install all the tools, plugins and other dependencies used for development and  ``auto-file-sorter`` as editable, run this:
+
+```bash
+pip install -e .[dev]
+```
+
+Alternatively, all the these can also be found in and installed via [``requirements-dev.txt``](/requirements-dev.txt); run this:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+#### Setting up the ``pre-commit`` hooks
+
+With the environment activated run:
+
+```bash
+pre-commit install
+```
+
+### Running tests and code linting
+
+This project utilizes [``tox``](https://tox.wiki/en/latest), so to run everything (tests and pre-commit), run this:
+
+```bash
+tox r
+```
+
+#### Running only tests
+
+Running only the tests can be done by running:
+
+```bash
+tox r -e py311 # or the interpreter version of choice
+```
+
+Alternatively, the tests can be directly run using:
+
+```bash
+pytest
+```
+
+To only run a specific test run:
+
+```bash
+pytest -k test_name_of_the_test
+```
+
+#### Code linting
+
+The linting and formatting is done using ``pre-commit``, thus run:
+
+```bash
+pre-commit run --all-files
+```
+
+</br>
+
+If any questions should arise, feel free to create an [issue](https://github.com/realshouzy/pip-review/issues) and ask for assistance.
+
+**Thank you for understanding and your willingness to contribute to this project!**
