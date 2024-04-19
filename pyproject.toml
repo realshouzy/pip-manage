@@ -10,8 +10,8 @@ authors = [
 ]
 name = "pip-review"
 description = "pip-review lets you smoothly manage all available PyPI updates."
-readme = "README.rst"
-license = { text = "BSD" }
+readme = "README.md"
+license = { text = "BSD/MIT" }
 maintainers = [{ name = "realshouzy" }]
 classifiers = [
   "License :: OSI Approved :: MIT License",
@@ -58,7 +58,6 @@ pip-review = "pip_review:main"
 
 [tool.setuptools]
 license-files = ["LICENSE.txt"]
-zip-safe = false
 platforms = ["any"]
 
 [tool.setuptools.dynamic]
