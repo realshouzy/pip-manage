@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-import pip_review
+from pip_manage import pip_review
 
 # pylint: disable=W0212, E1101, W0621, C0302, R0913, C0301
 

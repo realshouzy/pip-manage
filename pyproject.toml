@@ -8,9 +8,9 @@ authors = [
   { name = "Julian Gonggrijp", email = "j.gonggrijp@gmail.com" },
   { name = "Vincent Driessen" },
 ]
-name = "pip-review"
-description = "pip-review lets you smoothly manage all available PyPI updates."
-readme = "README.rst"
+name = "pip-manage"
+description = "pip-manage"
+readme = "README.md"
 license = { text = "BSD" }
 maintainers = [{ name = "realshouzy" }]
 classifiers = [
@@ -54,15 +54,16 @@ dev = [
 ]
 
 [project.scripts]
-pip-review = "pip_review:main"
+pip-review = "pip_manage.pip_review:main"
+pip-purge = "pip_manage.pip_purge:main"
 
 [tool.setuptools]
-license-files = ["LICENSE.txt"]
-zip-safe = false
+packages = ["pip_manage"]
+license-files = ["LICENSE-BSD", "LICENSE-MIT"]
 platforms = ["any"]
 
 [tool.setuptools.dynamic]
-version = { attr = "pip_review.__version__" }
+version = { attr = "pip_manage.__version__" }
 dependencies = { file = "requirements.txt" }
 
 [tool.black]
@@ -129,7 +130,7 @@ line-length = 88
 "./tests/*.py" = ["D104"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pip_review"]
+known-first-party = ["pip_manage"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.pydocstyle]

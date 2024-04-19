@@ -2,27 +2,27 @@
 """pip-review lets you smoothly manage all available PyPI updates."""
 from __future__ import annotations
 
-__version__: Final[str] = "1.4.0"
 __title__: Final[str] = "pip-review"
 
 import argparse
 import dataclasses
 import json
-import logging
 import os
 import subprocess  # nosec
 import sys
-from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, NamedTuple, TextIO
+from typing import TYPE_CHECKING, Final, NamedTuple
 
-if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
-    from typing import Self, override
-else:  # pragma: <3.12 cover
-    from typing_extensions import Self, override
+from pip_manage._logging import setup_logging
+from pip_manage._prompting import InteractiveAsker
 
+if sys.version_info >= (3, 11):  # pragma: >=3.11 cover
+    from typing import Self
+else:  # pragma: <3.11 cover
+    from typing_extensions import Self
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Callable, Sequence
     from collections.abc import Set as AbstractSet
 
@@ -189,68 +189,6 @@ def _filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
     return result
 
 
-class _StdOutFilter(logging.Filter):
-    @override
-    def filter(self, record: logging.LogRecord) -> bool:
-        return record.levelno in {logging.DEBUG, logging.INFO}
-
-
-def _setup_logging(*, verbose: bool) -> logging.Logger:
-    level: int = logging.DEBUG if verbose else logging.INFO
-
-    format_: str = "%(message)s"
-
-    logger: logging.Logger = logging.getLogger(__title__)
-
-    stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
-    stdout_handler.set_name("stdout")
-    stdout_handler.addFilter(_StdOutFilter())
-    stdout_handler.setFormatter(logging.Formatter(format_))
-    stdout_handler.setLevel(logging.DEBUG)
-
-    stderr_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stderr)
-    stderr_handler.set_name("stderr")
-    stderr_handler.setFormatter(logging.Formatter(format_))
-    stderr_handler.setLevel(logging.WARNING)
-
-    logger.setLevel(level)
-    logger.addHandler(stderr_handler)
-    logger.addHandler(stdout_handler)
-    return logger
-
-
-class _InteractiveAsker:
-    def __init__(self) -> None:
-        self.cached_answer: str | None = None
-        self.last_answer: str | None = None
-
-    def ask(self, prompt: str) -> str:
-        if self.cached_answer is not None:
-            return self.cached_answer
-
-        question_default: str = f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit "
-        answer: str | None = ""
-        while answer not in {"y", "n", "a", "q"}:
-            question_last: str = (
-                f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
-            )
-            answer = (
-                input(question_last if self.last_answer else question_default)
-                .strip()
-                .casefold()
-            )
-            answer = self.last_answer if answer == "" else answer
-
-        if answer in {"q", "a"}:
-            self.cached_answer = answer
-        self.last_answer = answer
-
-        return answer
-
-
-_ask_to_install: partial[str] = partial(_InteractiveAsker().ask, prompt="Upgrade now?")
-
-
 @dataclasses.dataclass
 class _OutdatedPackage:
     name: str
@@ -415,7 +353,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args, forwarded = _parse_args(argv)
     list_args: list[str] = _filter_forwards(forwarded, _INSTALL_ONLY)
     install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
-    logger: logging.Logger = _setup_logging(verbose=args.verbose)
+    logger: logging.Logger = setup_logging(__title__, verbose=args.verbose)
 
     logger.debug("Forwarded arguments: %s", forwarded)
     logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
@@ -488,8 +426,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pkg.version,
             )
 
+        upgrade_prompt: InteractiveAsker = InteractiveAsker("Upgrade now?")
         if args.interactive:
-            answer: str = _ask_to_install()
+            answer: str = upgrade_prompt.ask()
             if answer in {"y", "a"}:
                 selected.append(pkg)
 
