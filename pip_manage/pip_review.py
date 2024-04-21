@@ -11,10 +11,13 @@ from typing import TYPE_CHECKING, Final, NamedTuple
 
 from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
+    INSTALL_ONLY,
+    LIST_ONLY,
     filter_forwards,
     get_outdated_packages,
     update_packages,
 )
+from pip_manage._prompting import InteractiveAsker
 
 if TYPE_CHECKING:
     import logging
@@ -30,68 +33,6 @@ pip install, so you can pass things such as '--user', '--pre' and '--timeout'
 and they will do what you expect. See 'pip list -h' and 'pip install -h'
 for a full overview of the options.
 """
-
-# parameters that pip list supports but not pip install
-_LIST_ONLY: Final[frozenset[str]] = frozenset(
-    (
-        "l",
-        "local",
-        "path",
-        "pre",
-        "format",
-        "not-required",
-        "exclude-editable",
-        "include-editable",
-        "exclude",
-    ),
-)
-
-# parameters that pip install supports but not pip list
-_INSTALL_ONLY: Final[frozenset[str]] = frozenset(
-    (
-        "c",
-        "constraint",
-        "no-deps",
-        "dry-run",
-        "t",
-        "target",
-        "platform",
-        "python-version",
-        "implementation",
-        "abi",
-        "root",
-        "prefix",
-        "b",
-        "build",
-        "src",
-        "U",
-        "upgrade",
-        "upgrade-strategy",
-        "force-reinstall",
-        "I",
-        "ignore-installed",
-        "ignore-requires-python",
-        "no-build-isolation",
-        "use-pep517",
-        "check-build-dependencies",
-        "break-system-packages",
-        "C",
-        "config-settings",
-        "global-option",
-        "compile",
-        "no-compile",
-        "no-warn-script-location",
-        "no-warn-conflicts",
-        "no-binary",
-        "only-binary",
-        "prefer-binary",
-        "require-hashes",
-        "progress-bar",
-        "root-user-action",
-        "report",
-        "no-clean",
-    ),
-)
 
 
 def _parse_args(
@@ -158,36 +99,6 @@ def _parse_args(
         help="Preview update target list before upgrading packages",
     )
     return parser.parse_known_args(args)
-
-
-class _InteractiveAsker:
-    def __init__(self, prompt: str) -> None:
-        self.prompt: str = prompt
-        self.cached_answer: str | None = None
-        self.last_answer: str | None = None
-
-    def ask(self) -> str:
-        if self.cached_answer is not None:
-            return self.cached_answer
-
-        question_default: str = f"{self.prompt} [Y]es, [N]o, [A]ll, [Q]uit "
-        answer: str | None = ""
-        while answer not in {"y", "n", "a", "q"}:
-            question_last: str = (
-                f"{self.prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
-            )
-            answer = (
-                input(question_last if self.last_answer else question_default)
-                .strip()
-                .casefold()
-            )
-            answer = self.last_answer if answer == "" else answer
-
-        if answer in {"q", "a"}:
-            self.cached_answer = answer
-        self.last_answer = answer
-
-        return answer
 
 
 def freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
@@ -292,8 +203,8 @@ def _format_table(columns: list[list[str]]) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args, forwarded = _parse_args(argv)
-    list_args: list[str] = filter_forwards(forwarded, _INSTALL_ONLY)
-    install_args: list[str] = filter_forwards(forwarded, _LIST_ONLY)
+    list_args: list[str] = filter_forwards(forwarded, INSTALL_ONLY)
+    install_args: list[str] = filter_forwards(forwarded, LIST_ONLY)
     logger: logging.Logger = setup_logging(__title__, verbose=args.verbose)
 
     logger.debug("Forwarded arguments: %s", forwarded)
@@ -367,7 +278,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pkg.version,
             )
 
-        upgrade_prompt: _InteractiveAsker = _InteractiveAsker("Upgrade now?")
+        upgrade_prompt: InteractiveAsker = InteractiveAsker("Upgrade now?")
         if args.interactive:
             answer: str = upgrade_prompt.ask()
             if answer in {"y", "a"}:

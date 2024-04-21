@@ -4,11 +4,12 @@ __all__: Final[tuple[str, ...]] = (
     "update_packages",
     "get_outdated_packages",
     "get_dependencies_of_package",
-    "purge_packages",
+    "uninstall_packages",
     "filter_forwards",
 )
 
 import dataclasses
+import importlib.metadata as implib
 import json
 import subprocess  # nosec
 import sys
@@ -24,6 +25,80 @@ if TYPE_CHECKING:
 
 # command that sets up the pip module of the current Python interpreter
 _PIP_CMD: Final[tuple[str, str, str]] = (sys.executable, "-m", "pip")
+
+# parameters that only pip list supports
+LIST_ONLY: Final[frozenset[str]] = frozenset(
+    (
+        "l",
+        "local",
+        "path",
+        "pre",
+        "format",
+        "not-required",
+        "exclude-editable",
+        "include-editable",
+        "exclude",
+    ),
+)
+
+# parameters that only pip install supports
+INSTALL_ONLY: Final[frozenset[str]] = frozenset(
+    (
+        "c",
+        "constraint",
+        "no-deps",
+        "dry-run",
+        "t",
+        "target",
+        "platform",
+        "python-version",
+        "implementation",
+        "abi",
+        "root",
+        "prefix",
+        "b",
+        "build",
+        "src",
+        "U",
+        "upgrade",
+        "upgrade-strategy",
+        "force-reinstall",
+        "I",
+        "ignore-installed",
+        "ignore-requires-python",
+        "no-build-isolation",
+        "use-pep517",
+        "check-build-dependencies",
+        "break-system-packages",
+        "C",
+        "config-settings",
+        "global-option",
+        "compile",
+        "no-compile",
+        "no-warn-script-location",
+        "no-warn-conflicts",
+        "no-binary",
+        "only-binary",
+        "prefer-binary",
+        "require-hashes",
+        "progress-bar",
+        "root-user-action",
+        "report",
+        "no-clean",
+    ),
+)
+
+# parameters that only pip uninstall supports
+UNINSTALL_ONLY: Final[frozenset[str]] = frozenset(
+    (
+        "r",
+        "requirement",
+        "y",
+        "yes",
+        "root-user-action",
+        "break-system-packages",
+    ),
+)
 
 
 def filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
@@ -106,35 +181,54 @@ def get_outdated_packages(forwarded: list[str]) -> list[_OutdatedPackage]:
     return packages
 
 
+# TODO: Improve naming!!!
+
+
+def _is_installed(pkg_name: str) -> bool:
+    try:
+        implib.distribution(pkg_name)
+    except implib.PackageNotFoundError:
+        return False
+    return True
+
+
+def _parse_requirements(requirements: list[str] | None) -> frozenset[str]:
+    return (
+        frozenset(
+            require
+            for requirement in requirements
+            if _is_installed(require := requirement.partition(" ")[0])
+        )
+        if requirements
+        else frozenset()
+    )
+
+
+def _get_required_by(pkg_name: str) -> frozenset[str]:
+    return frozenset(
+        dist_name
+        for dist in implib.distributions()
+        if (dist_name := dist.name.partition(" ")[0]) != pkg_name
+        and pkg_name in _parse_requirements(dist.requires)
+    )
+
+
 def get_dependencies_of_package(
     pkg_name: str,
 ) -> tuple[frozenset[str], frozenset[str]]:
-    command: list[str] = [
-        *_PIP_CMD,
-        "show",
-        pkg_name,
-    ]
-    output: str = subprocess.check_output(command).decode("utf-8")  # nosec
-    pkg_info: list[str] = output.split("\r\n")
-
-    if requires_part := pkg_info[-3][10:]:
-        requires: frozenset[str] = frozenset(requires_part.split(", "))
-    else:
-        requires = frozenset()
-
-    if required_by_part := pkg_info[-2][13:]:
-        required_by: frozenset[str] = frozenset(required_by_part.split(", "))
-    else:
-        required_by = frozenset()
-
+    requires: frozenset[str] = _parse_requirements(
+        implib.distribution(pkg_name).requires,
+    )
+    required_by: frozenset[str] = _get_required_by(pkg_name)
     return requires, required_by
 
 
-def purge_packages(pkgs: list[str], forwarded: list[str]) -> None:
+def uninstall_packages(pkgs: list[str], forwarded: list[str]) -> None:
     command: list[str] = [
         *_PIP_CMD,
         "uninstall",
         *pkgs,
         *forwarded,
     ]
+    # print(" ".join(command))
     subprocess.call(command, stdout=sys.stdout, stderr=sys.stderr)  # nosec
