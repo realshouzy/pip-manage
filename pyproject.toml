@@ -9,9 +9,9 @@ authors = [
   { name = "Vincent Driessen" },
 ]
 name = "pip-manage"
-description = "pip-manage"
+description = "pip-manage."
 readme = "README.md"
-license = { text = "BSD" }
+license = { text = "BSD/MIT" }
 maintainers = [{ name = "realshouzy" }]
 classifiers = [
   "License :: OSI Approved :: MIT License",
