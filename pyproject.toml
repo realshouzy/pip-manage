@@ -118,6 +118,9 @@ lint.ignore = [
   "PLR0912",
   "PLR0911",
   "B905",
+  "TD002",
+  "TD003",
+  "FIX002",
 ]
 lint.fixable = ["ALL"]
 lint.unfixable = []
@@ -137,7 +140,7 @@ required-imports = ["from __future__ import annotations"]
 convention = "pep257"
 
 [tool.pylint]
-disable = ["R0903", "C0114", "C0115", "C0116", "R0912", "R0911"]
+disable = ["R0903", "C0114", "C0115", "C0116", "R0912", "R0911", "W0511"]
 load-plugins = "pylint_pytest"
 
 [tool.bandit]
