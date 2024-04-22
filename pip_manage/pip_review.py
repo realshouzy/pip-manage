@@ -203,8 +203,16 @@ def _format_table(columns: list[list[str]]) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args, forwarded = _parse_args(argv)
-    list_args: list[str] = filter_forwards(forwarded, INSTALL_ONLY)
-    install_args: list[str] = filter_forwards(forwarded, LIST_ONLY)
+    list_args: list[str] = filter_forwards(
+        forwarded,
+        exclude=INSTALL_ONLY,
+        include=LIST_ONLY,
+    )
+    install_args: list[str] = filter_forwards(
+        forwarded,
+        exclude=LIST_ONLY,
+        include=INSTALL_ONLY,
+    )
     logger: logging.Logger = setup_logging(__title__, verbose=args.verbose)
 
     logger.debug("Forwarded arguments: %s", forwarded)

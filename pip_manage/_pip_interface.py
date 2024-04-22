@@ -3,13 +3,14 @@ from __future__ import annotations
 __all__: Final[tuple[str, ...]] = (
     "update_packages",
     "get_outdated_packages",
-    "get_dependencies_of_package",
     "uninstall_packages",
-    "filter_forwards",
+    "PIP_CMD",
+    "LIST_ONLY",
+    "INSTALL_ONLY",
+    "UNINSTALL_ONLY",
 )
 
 import dataclasses
-import importlib.metadata as implib
 import json
 import subprocess  # nosec
 import sys
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Set as AbstractSet
 
 # command that sets up the pip module of the current Python interpreter
-_PIP_CMD: Final[tuple[str, str, str]] = (sys.executable, "-m", "pip")
+PIP_CMD: Final[tuple[str, str, str]] = (sys.executable, "-m", "pip")
 
 # parameters that only pip list supports
 LIST_ONLY: Final[frozenset[str]] = frozenset(
@@ -101,7 +102,7 @@ UNINSTALL_ONLY: Final[frozenset[str]] = frozenset(
 )
 
 
-def filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
+def filter_forwards_exclude(args: list[str], exclude: AbstractSet[str]) -> list[str]:
     """Return only the parts of `args` that do not appear in `exclude`."""
     result: list[str] = []
     # Start with false, because an unknown argument not starting with a dash
@@ -121,6 +122,37 @@ def filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
             result.append(arg)
             admitted = True
     return result
+
+
+def filter_forwards_include(args: list[str], include: AbstractSet[str]) -> list[str]:
+    """Return only the parts of `args` that do appear in `include`."""
+    result: list[str] = []
+    # Start with false, because an unknown argument not starting with a dash
+    # probably would just trip pip.
+    admitted: bool = False
+    for arg in args:
+        arg_name: str = arg.partition("=")[0].lstrip("-")
+
+        if not arg.startswith("-") and admitted:
+            # assume this belongs with the previous argument.
+            result.append(arg)
+        elif not arg.startswith("-") and not admitted:
+            continue
+        elif arg_name in include:
+            result.append(arg)
+            admitted = True
+        else:
+            admitted = False
+    return result
+
+
+def filter_forwards(
+    args: list[str],
+    *,
+    include: AbstractSet[str],
+    exclude: AbstractSet[str],
+) -> list[str]:
+    return filter_forwards_exclude(filter_forwards_include(args, include), exclude)
 
 
 @dataclasses.dataclass
@@ -151,15 +183,15 @@ def update_packages(
     *,
     continue_on_fail: bool,
 ) -> None:
-    command: list[str] = [*_PIP_CMD, "install", "-U", *forwarded]
+    command: list[str] = [*PIP_CMD, "install", "-U", *forwarded]
 
     if not continue_on_fail:
-        command.extend(pkg.name for pkg in packages)
+        command.extend(package.name for package in packages)
         subprocess.call(command, stdout=sys.stdout, stderr=sys.stderr)  # nosec
     else:
-        for pkg in packages:
+        for package in packages:
             subprocess.call(
-                [*command, pkg.name],
+                [*command, package.name],
                 stdout=sys.stdout,
                 stderr=sys.stderr,
             )  # nosec
@@ -167,7 +199,7 @@ def update_packages(
 
 def get_outdated_packages(forwarded: list[str]) -> list[_OutdatedPackage]:
     command: list[str] = [
-        *_PIP_CMD,
+        *PIP_CMD,
         "list",
         "--outdated",
         "--disable-pip-version-check",
@@ -181,54 +213,24 @@ def get_outdated_packages(forwarded: list[str]) -> list[_OutdatedPackage]:
     return packages
 
 
-# TODO: Improve naming!!!
-
-
-def _is_installed(pkg_name: str) -> bool:
-    try:
-        implib.distribution(pkg_name)
-    except implib.PackageNotFoundError:
-        return False
-    return True
-
-
-def _parse_requirements(requirements: list[str] | None) -> frozenset[str]:
-    return (
-        frozenset(
-            require
-            for requirement in requirements
-            if _is_installed(require := requirement.partition(" ")[0])
-        )
-        if requirements
-        else frozenset()
-    )
-
-
-def _get_required_by(pkg_name: str) -> frozenset[str]:
-    return frozenset(
-        dist_name
-        for dist in implib.distributions()
-        if (dist_name := dist.name.partition(" ")[0]) != pkg_name
-        and pkg_name in _parse_requirements(dist.requires)
-    )
-
-
-def get_dependencies_of_package(
-    pkg_name: str,
-) -> tuple[frozenset[str], frozenset[str]]:
-    requires: frozenset[str] = _parse_requirements(
-        implib.distribution(pkg_name).requires,
-    )
-    required_by: frozenset[str] = _get_required_by(pkg_name)
-    return requires, required_by
-
-
-def uninstall_packages(pkgs: list[str], forwarded: list[str]) -> None:
+def uninstall_packages(
+    packages: list[str],
+    forwarded: list[str],
+    *,
+    continue_on_fail: bool,
+) -> None:
     command: list[str] = [
-        *_PIP_CMD,
+        *PIP_CMD,
         "uninstall",
-        *pkgs,
         *forwarded,
     ]
-    # print(" ".join(command))
-    subprocess.call(command, stdout=sys.stdout, stderr=sys.stderr)  # nosec
+    if not continue_on_fail:
+        command.extend(packages)
+        subprocess.call(command, stdout=sys.stdout, stderr=sys.stderr)  # nosec
+    else:
+        for package in packages:
+            subprocess.call(
+                [*command, package],
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+            )  # nosec
