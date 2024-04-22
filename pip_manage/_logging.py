@@ -18,12 +18,12 @@ class _StdOutFilter(logging.Filter):
         return record.levelno in {logging.DEBUG, logging.INFO}
 
 
-def setup_logging(name: str, *, verbose: bool) -> logging.Logger:
+def setup_logging(logger_name: str, *, verbose: bool) -> logging.Logger:
     level: int = logging.DEBUG if verbose else logging.INFO
 
     format_: str = "%(message)s"
 
-    logger: logging.Logger = logging.getLogger(name)
+    logger: logging.Logger = logging.getLogger(logger_name)
 
     formatter: logging.Formatter = logging.Formatter(format_)
 
