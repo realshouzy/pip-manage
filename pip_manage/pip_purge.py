@@ -39,8 +39,21 @@ def _parse_args(
     )
     parser.add_argument(
         "packages",
-        nargs="+",
+        nargs="*",
+        default=[],
         help="Packages to purge",
+    )
+    parser.add_argument(
+        "--requirement",
+        "-r",
+        nargs="*",
+        metavar="FILE_PATH",
+        type=lambda path: Path(path.strip()).resolve(),
+        default=[],
+        help=(
+            "Uninstall all the packages listed in the given requirements file "
+            "(can be used multiple times)"
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -143,6 +156,14 @@ def _get_dependencies_of_package(
     return _DependencyInfo(dependencies, dependents)
 
 
+def _read_from_requirements(requirements: list[Path]) -> list[str]:
+    return [
+        package.strip()
+        for requirement in requirements
+        for package in requirement.read_text(encoding="utf-8").splitlines()
+    ]
+
+
 def _freeze_packages(file: Path, packages: list[str]) -> None:
     frozen_packages: str = "\n".join(
         f"{package}=={implib.distribution(package).version}" for package in packages
@@ -159,7 +180,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
     package_dependencies: dict[str, _DependencyInfo] = {}
-    for package in args.packages:
+    for package in [*args.packages, *_read_from_requirements(args.requirement)]:
         if not _is_installed(package):
             logger.warning("%s is not installed", package)
             continue
@@ -171,9 +192,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             package,
             ignore_extra=args.ignore_extra,
         )
-        for dependent_package in package_dependencies[package].dependencies:
-            if dependent_package in args.exclude:
-                continue
+        for dependent_package in package_dependencies[package].dependencies.difference(
+            args.exclude,
+        ):
 
             package_dependencies[dependent_package] = _get_dependencies_of_package(
                 dependent_package,
@@ -215,11 +236,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         _freeze_packages(args.freeze_file, packages_to_uninstall)
         logger.debug("Wrote packages to %s", args.freeze_file)
 
-    if args.dry_run and packages_to_uninstall:
+    if args.dry_run and uninstall_args and packages_to_uninstall:
         logger.info(
             "Would run: '%s uninstall %s %s'",
             " ".join(PIP_CMD),
             " ".join(uninstall_args),
+            " ".join(packages_to_uninstall),
+        )
+    elif args.dry_run and not uninstall_args and packages_to_uninstall:
+        logger.info(
+            "Would run: '%s uninstall %s'",
+            " ".join(PIP_CMD),
             " ".join(packages_to_uninstall),
         )
     elif not args.dry_run and packages_to_uninstall:

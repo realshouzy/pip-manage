@@ -91,8 +91,6 @@ INSTALL_ONLY: Final[frozenset[str]] = frozenset(
 # parameters that only pip uninstall supports
 UNINSTALL_ONLY: Final[frozenset[str]] = frozenset(
     (
-        "r",
-        "requirement",
         "y",
         "yes",
         "root-user-action",
