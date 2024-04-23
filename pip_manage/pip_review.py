@@ -29,8 +29,8 @@ _EPILOG: Final[
     str
 ] = """
 Unrecognised arguments will be forwarded to 'pip list --outdated' and
-pip install, so you can pass things such as '--user', '--pre' and '--timeout'
-and they will do what you expect. See 'pip list -h' and 'pip install -h'
+'pip install' (if supported), so you can pass things such as '--user', '--pre'
+and '--timeout' and they will do what you expect. See 'pip list -h' and 'pip install -h'
 for a full overview of the options.
 """
 
