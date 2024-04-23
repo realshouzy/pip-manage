@@ -34,7 +34,6 @@ LIST_ONLY: Final[frozenset[str]] = frozenset(
         "local",
         "path",
         "pre",
-        "format",
         "not-required",
         "exclude-editable",
         "include-editable",
