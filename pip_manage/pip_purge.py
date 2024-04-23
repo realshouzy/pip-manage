@@ -40,13 +40,15 @@ def _parse_args(
     parser.add_argument(
         "packages",
         nargs="*",
+        action="append",
         default=[],
         help="Packages to purge",
     )
     parser.add_argument(
         "--requirement",
         "-r",
-        nargs="*",
+        dest="requirements",
+        action="append",
         metavar="FILE_PATH",
         type=lambda path: Path(path.strip()).resolve(),
         default=[],
@@ -180,7 +182,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
     package_dependencies: dict[str, _DependencyInfo] = {}
-    for package in [*args.packages, *_read_from_requirements(args.requirement)]:
+    for package in [*args.packages, *_read_from_requirements(args.requirements)]:
         if not _is_installed(package):
             logger.warning("%s is not installed", package)
             continue
