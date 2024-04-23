@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""pip-purge."""
+"""pip-purge lets you smoothly uninstall packages and their dependencies."""
 from __future__ import annotations
 
 __title__: Final[str] = "pip-purge"
 
 import argparse
 import importlib.metadata as implib
+from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
 from pip_manage._logging import setup_logging
@@ -20,13 +21,21 @@ if TYPE_CHECKING:
     import logging
     from collections.abc import Sequence
 
+_EPILOG: Final[
+    str
+] = """
+Unrecognised arguments will be forwarded to 'pip uninstall ' (if supported),
+so you can pass things such as '--yes' and '--break-system-packages' and
+they will do what you expect. See 'pip uninstall -h' for a full overview of the options.
+"""
 
-# TODO: Add freeze-packages option
+
 def _parse_args(
     args: Sequence[str] | None = None,
 ) -> tuple[argparse.Namespace, list[str]]:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description=__doc__,
+        epilog=_EPILOG,
     )
     parser.add_argument(
         "packages",
@@ -63,14 +72,28 @@ def _parse_args(
         "--dry-run",
         action="store_true",
         default=False,
-        help="Don't actually uninstall anything, just print what would be",
+        help="Don't actually purge anything, just print what would be",
+    )
+    parser.add_argument(
+        "--freeze-packages",
+        action="store_true",
+        default=False,
+        help="Freeze all packages that will be purged",
+    )
+    parser.add_argument(
+        "--freeze-file",
+        "-f",
+        metavar="FILE_PATH",
+        type=lambda path: Path(path.strip()).resolve(),
+        default=Path("backup.txt").resolve(),
+        help="Specify the file path to store the frozen packages",
     )
     return parser.parse_known_args(args)
 
 
-def _is_installed(pkg_name: str) -> bool:
+def _is_installed(package: str) -> bool:
     try:
-        implib.distribution(pkg_name)
+        implib.distribution(package)
     except implib.PackageNotFoundError:
         return False
     return True
@@ -118,6 +141,13 @@ def _get_dependencies_of_package(
     )
     dependents: frozenset[str] = _get_required_by(package, ignore_extra=ignore_extra)
     return _DependencyInfo(dependencies, dependents)
+
+
+def _freeze_packages(file: Path, packages: list[str]) -> None:
+    frozen_packages: str = "\n".join(
+        f"{package}=={implib.distribution(package).version}" for package in packages
+    )
+    file.write_text(f"{frozen_packages}\n", encoding="utf-8")
 
 
 # Add more debbuging logging
@@ -181,6 +211,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ", ".join(dependency_info.dependents.difference(package_dependencies)),
             )
 
+    if args.freeze_packages:
+        _freeze_packages(args.freeze_file, packages_to_uninstall)
+        logger.debug("Wrote packages to %s", args.freeze_file)
+
     if args.dry_run and packages_to_uninstall:
         logger.info(
             "Would run: '%s uninstall %s %s'",
@@ -189,6 +223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             " ".join(packages_to_uninstall),
         )
     elif not args.dry_run and packages_to_uninstall:
+        logger.info("Purging: %s", ", ".join(packages_to_uninstall))
         uninstall_packages(
             packages_to_uninstall,
             uninstall_args,
