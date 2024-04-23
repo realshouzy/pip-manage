@@ -101,7 +101,7 @@ def _parse_args(
     return parser.parse_known_args(args)
 
 
-def freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
+def _freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
     outdated_packages: str = "\n".join(f"{pkg.name}=={pkg.version}" for pkg in packages)
     file.write_text(f"{outdated_packages}\n", encoding="utf-8")
 
@@ -239,7 +239,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.freeze_outdated_packages:
-        freeze_outdated_packages(args.freeze_file, outdated)
+        _freeze_outdated_packages(args.freeze_file, outdated)
         logger.debug("Wrote outdated packages to %s", args.freeze_file)
 
     if args.raw:
