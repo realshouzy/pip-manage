@@ -17,7 +17,6 @@ from pip_manage._pip_interface import (
     get_outdated_packages,
     update_packages,
 )
-from pip_manage._prompting import InteractiveAsker
 
 if TYPE_CHECKING:
     import logging
@@ -99,6 +98,36 @@ def _parse_args(
         help="Preview update target list before upgrading packages",
     )
     return parser.parse_known_args(args)
+
+
+class _InteractiveAsker:
+    def __init__(self, prompt: str) -> None:
+        self.prompt: str = prompt
+        self.cached_answer: str | None = None
+        self.last_answer: str | None = None
+
+    def ask(self) -> str:
+        if self.cached_answer is not None:
+            return self.cached_answer
+
+        question_default: str = f"{self.prompt} [Y]es, [N]o, [A]ll, [Q]uit "
+        answer: str | None = ""
+        while answer not in {"y", "n", "a", "q"}:
+            question_last: str = (
+                f"{self.prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
+            )
+            answer = (
+                input(question_last if self.last_answer else question_default)
+                .strip()
+                .casefold()
+            )
+            answer = self.last_answer if answer == "" else answer
+
+        if answer in {"q", "a"}:
+            self.cached_answer = answer
+        self.last_answer = answer
+
+        return answer
 
 
 def _freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
@@ -286,7 +315,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pkg.version,
             )
 
-        upgrade_prompt: InteractiveAsker = InteractiveAsker("Upgrade now?")
+        upgrade_prompt: _InteractiveAsker = _InteractiveAsker("Upgrade now?")
         if args.interactive:
             answer: str = upgrade_prompt.ask()
             if answer in {"y", "a"}:
