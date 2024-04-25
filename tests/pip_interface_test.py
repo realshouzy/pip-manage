@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from pip_manage._pip_interface import (  # uninstall_packages,
+from pip_manage._pip_interface import (
     INSTALL_ONLY,
     LIST_ONLY,
     PIP_CMD,
@@ -16,6 +16,7 @@ from pip_manage._pip_interface import (  # uninstall_packages,
     filter_forwards_exclude,
     filter_forwards_include,
     get_outdated_packages,
+    uninstall_packages,
     update_packages,
 )
 from tests.fixtures import sample_packages, sample_subprocess_output
@@ -428,6 +429,63 @@ def test_get_outdated_packages(
     ):
         outdated_packages: list[_OutdatedPackage] = get_outdated_packages([])
     assert outdated_packages == sample_packages
+
+
+@pytest.mark.parametrize(
+    "forwarded",
+    [[], ["--forwarded"], ["--forwarded1", "--forwarded2"]],
+)
+def test_uninstall_packages_continue_on_fail_set_to_false(forwarded: list[str]) -> None:
+    packages: list[str] = ["test1", "test2"]
+    with mock.patch("subprocess.call") as mock_subprocess_call:
+        uninstall_packages(packages, forwarded, continue_on_fail=False)
+
+    expected_cmd: list[str] = [
+        *PIP_CMD,
+        "uninstall",
+        *forwarded,
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+
+
+@pytest.mark.parametrize(
+    "forwarded",
+    [[], ["--forwarded"], ["--forwarded1", "--forwarded2"]],
+)
+def test_uninstall_packages_continue_on_fail_set_to_true(forwarded: list[str]) -> None:
+    packages: list[str] = ["test1", "test2"]
+    with mock.patch("subprocess.call") as mock_subprocess_call:
+        uninstall_packages(packages, forwarded, continue_on_fail=True)
+
+    expected_calls: list[mock._Call] = [
+        mock.call(
+            [
+                *PIP_CMD,
+                "uninstall",
+                *forwarded,
+                "test1",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+        mock.call(
+            [
+                *PIP_CMD,
+                "uninstall",
+                *forwarded,
+                "test2",
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        ),
+    ]
+    mock_subprocess_call.assert_has_calls(expected_calls)
 
 
 if __name__ == "__main__":
