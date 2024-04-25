@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
     from pip_manage._pip_interface import _OutdatedPackage
 
+
 _EPILOG: Final[
     str
 ] = """
@@ -128,6 +129,9 @@ class _InteractiveAsker:
         self.last_answer = answer
 
         return answer
+
+
+_UPGRADE_PROMPT: Final[_InteractiveAsker] = _InteractiveAsker("Upgrade now?")
 
 
 def _freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
@@ -315,9 +319,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pkg.version,
             )
 
-        upgrade_prompt: _InteractiveAsker = _InteractiveAsker("Upgrade now?")
         if args.interactive:
-            answer: str = upgrade_prompt.ask()
+            answer: str = _UPGRADE_PROMPT.ask()
             if answer in {"y", "a"}:
                 selected.append(pkg)
 

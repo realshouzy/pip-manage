@@ -129,18 +129,27 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint.extend-per-file-ignores]
-"./tests/*_test.py" = ["S101", "SLF001", "PLR0913"]
+"./tests/*_test.py" = ["S101", "SLF001", "PLR0913", "F811", "F401"]
 "./tests/*.py" = ["D104"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["pip_manage"]
+known-first-party = ["pip_manage", "tests"]
 required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
 
 [tool.pylint]
-disable = ["R0903", "C0114", "C0115", "C0116", "R0912", "R0911", "W0511"]
+disable = [
+  "R0903",
+  "C0114",
+  "C0115",
+  "C0116",
+  "R0912",
+  "R0911",
+  "W0511",
+  "W0212",
+]
 load-plugins = "pylint_pytest"
 
 [tool.bandit]
