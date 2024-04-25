@@ -165,6 +165,7 @@ def test_freeze_outdated_packages(
     sample_packages: list[_OutdatedPackage],
 ) -> None:
     tmp_file: Path = tmp_path / "outdated.txt"
+    tmp_file.touch()
     pip_review._freeze_outdated_packages(tmp_file, sample_packages)
     assert tmp_file.read_text(encoding="utf-8") == "test1==1.0.0\ntest2==1.9.9\n"
 
