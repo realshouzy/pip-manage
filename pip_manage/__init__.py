@@ -1,4 +1,4 @@
-"""pip_manage."""
+"""pip-manage lets you smoothly manage your installed packages."""
 
 from __future__ import annotations
 

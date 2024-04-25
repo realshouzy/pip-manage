@@ -9,7 +9,7 @@ authors = [
   { name = "Vincent Driessen" },
 ]
 name = "pip-manage"
-description = "pip-manage."
+description = "pip-manage lets you smoothly manage your installed packages."
 readme = "README.md"
 license = { text = "BSD/MIT" }
 maintainers = [{ name = "realshouzy" }]
@@ -120,7 +120,6 @@ lint.ignore = [
   "B905",
   "TD002",
   "TD003",
-  "FIX002",
 ]
 lint.fixable = ["ALL"]
 lint.unfixable = []
