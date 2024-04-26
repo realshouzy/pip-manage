@@ -96,7 +96,7 @@ def test_parse_args_empty_args() -> None:
         pytest.param(["-p"], "preview", id="-p"),
     ],
 )
-def test_parse_args_flags_with_default_set_to_true(args: list[str], field: str) -> None:
+def test_parse_args_flags_with_set_to_true(args: list[str], field: str) -> None:
     assert getattr(
         pip_review._parse_args(args)[0],
         field,
