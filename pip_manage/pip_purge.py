@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 _EPILOG: Final[
     str
 ] = """
-Unrecognised arguments will be forwarded to 'pip uninstall ' (if supported),
+Unrecognised arguments will be forwarded to 'pip uninstall' (if supported),
 so you can pass things such as '--yes' and '--break-system-packages' and
 they will do what you expect. See 'pip uninstall -h' for a full overview of the options.
 """
@@ -40,7 +40,6 @@ def _parse_args(
     parser.add_argument(
         "packages",
         nargs="*",
-        action="append",
         default=[],
         help="Packages to purge",
     )
@@ -67,7 +66,7 @@ def _parse_args(
     parser.add_argument(
         "--ignore-extra",
         action="store_true",
-        default=True,
+        default=False,
         help="Ignore extra dependencies",
     )
     parser.add_argument(
@@ -124,19 +123,23 @@ def _parse_requirements(
             require
             for requirement in requirements
             if _is_installed(require := requirement.partition(" ")[0])
-            and (ignore_extra) ^ ("extra == " in requirement)
+            and (
+                (ignore_extra) ^ ("extra == " in requirement)
+                or not ignore_extra
+                and "extra == " not in requirement
+            )
         )
         if requirements
         else frozenset()
     )
 
 
-def _get_required_by(pkg_name: str, *, ignore_extra: bool) -> frozenset[str]:
+def _get_required_by(package: str, *, ignore_extra: bool) -> frozenset[str]:
     return frozenset(
         dist_name
         for dist in implib.distributions()
-        if (dist_name := dist.name.partition(" ")[0]) != pkg_name
-        and pkg_name in _parse_requirements(dist.requires, ignore_extra=ignore_extra)
+        if (dist_name := dist.name.partition(" ")[0]) != package
+        and package in _parse_requirements(dist.requires, ignore_extra=ignore_extra)
     )
 
 
@@ -173,7 +176,6 @@ def _freeze_packages(file: Path, packages: list[str]) -> None:
     file.write_text(f"{frozen_packages}\n", encoding="utf-8")
 
 
-# Add more debbuging logging
 def main(argv: Sequence[str] | None = None) -> int:
     args, forwarded = _parse_args(argv)
     uninstall_args: list[str] = filter_forwards_include(forwarded, UNINSTALL_ONLY)
@@ -194,13 +196,32 @@ def main(argv: Sequence[str] | None = None) -> int:
             package,
             ignore_extra=args.ignore_extra,
         )
+        logger.debug(
+            "%s requires: %s",
+            package,
+            ", ".join(package_dependencies[package].dependencies),
+        )
+        logger.debug(
+            "%s is required by: %s",
+            package,
+            ", ".join(package_dependencies[package].dependents),
+        )
         for dependent_package in package_dependencies[package].dependencies.difference(
             args.exclude,
         ):
-
             package_dependencies[dependent_package] = _get_dependencies_of_package(
                 dependent_package,
                 ignore_extra=args.ignore_extra,
+            )
+            logger.debug(
+                "%s requires: %s",
+                dependent_package,
+                ", ".join(package_dependencies[dependent_package].dependencies),
+            )
+            logger.debug(
+                "%s is required by: %s",
+                dependent_package,
+                ", ".join(package_dependencies[dependent_package].dependents),
             )
 
     # In the first iteration, it is determined which packages should be kept
@@ -208,11 +229,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     # If a package has dependents that are NOT supposed to also by uninstalled,
     # it removes the package from package_dependencies.
     for package_name, dependency_info in package_dependencies.copy().items():
+        logger.debug("Checking %s", package_name)
         if dependency_info.dependents and not all(
             package in package_dependencies for package in dependency_info.dependents
         ):
             logger.info(
-                "Cannot uninstall %s: Required by %s",
+                "Cannot uninstall %s, required by: %s",
                 package_name,
                 ", ".join(dependency_info.dependents.difference(package_dependencies)),
             )
@@ -223,16 +245,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     # are also reconsidered.
     packages_to_uninstall: list[str] = []
     for package_name, dependency_info in package_dependencies.items():
+        logger.debug("Checking %s again", package_name)
         if not dependency_info.dependents or all(
             package in package_dependencies for package in dependency_info.dependents
         ):
             packages_to_uninstall.append(package_name)
+            logger.debug("%s will be uninstalled", package_name)
         else:
             logger.info(
-                "Cannot uninstall %s: Required by %s",
+                "Cannot uninstall %s, required by: %s",
                 package_name,
                 ", ".join(dependency_info.dependents.difference(package_dependencies)),
             )
+
+    logger.debug("Finished checking packages")
 
     if args.freeze_packages:
         _freeze_packages(args.freeze_file, packages_to_uninstall)
@@ -252,7 +278,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             " ".join(packages_to_uninstall),
         )
     elif not args.dry_run and packages_to_uninstall:
-        logger.info("Purging: %s", ", ".join(packages_to_uninstall))
+        if uninstall_args:
+            logger.info(
+                "Running: '%s uninstall %s %s'",
+                " ".join(PIP_CMD),
+                " ".join(uninstall_args),
+                " ".join(packages_to_uninstall),
+            )
+        else:
+            logger.info(
+                "Running: '%s uninstall %s'",
+                " ".join(PIP_CMD),
+                " ".join(packages_to_uninstall),
+            )
         uninstall_packages(
             packages_to_uninstall,
             uninstall_args,
