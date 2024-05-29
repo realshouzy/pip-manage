@@ -5,7 +5,7 @@ from __future__ import annotations
 __title__: Final[str] = "pip-purge"
 
 import argparse
-import importlib.metadata as implib
+import importlib.metadata
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
@@ -21,13 +21,13 @@ if TYPE_CHECKING:
     import logging
     from collections.abc import Sequence
 
-_EPILOG: Final[
-    str
-] = """
+_EPILOG: Final[str] = (
+    """
 Unrecognised arguments will be forwarded to 'pip uninstall' (if supported),
 so you can pass things such as '--yes' and '--break-system-packages' and
 they will do what you expect. See 'pip uninstall -h' for a full overview of the options.
 """
+)
 
 
 def _parse_args(
@@ -107,8 +107,8 @@ def _parse_args(
 
 def _is_installed(package: str) -> bool:
     try:
-        implib.distribution(package)
-    except implib.PackageNotFoundError:
+        importlib.metadata.distribution(package)
+    except importlib.metadata.PackageNotFoundError:
         return False
     return True
 
@@ -118,26 +118,24 @@ def _parse_requirements(
     *,
     ignore_extra: bool,
 ) -> frozenset[str]:
-    return (
-        frozenset(
-            require
-            for requirement in requirements
-            if _is_installed(require := requirement.partition(" ")[0])
-            and (
-                (ignore_extra) ^ ("extra == " in requirement)
-                or not ignore_extra
-                and "extra == " not in requirement
-            )
+    if not requirements:
+        return frozenset()
+    return frozenset(
+        require
+        for requirement in requirements
+        if _is_installed(require := requirement.partition(" ")[0])
+        and (
+            (ignore_extra) ^ ("extra == " in requirement)  # xor
+            or not ignore_extra
+            and "extra == " not in requirement
         )
-        if requirements
-        else frozenset()
     )
 
 
 def _get_required_by(package: str, *, ignore_extra: bool) -> frozenset[str]:
     return frozenset(
         dist_name
-        for dist in implib.distributions()
+        for dist in importlib.metadata.distributions()
         if (dist_name := dist.name.partition(" ")[0]) != package
         and package in _parse_requirements(dist.requires, ignore_extra=ignore_extra)
     )
@@ -154,7 +152,7 @@ def _get_dependencies_of_package(
     ignore_extra: bool,
 ) -> _DependencyInfo:
     dependencies: frozenset[str] = _parse_requirements(
-        implib.distribution(package).requires,
+        importlib.metadata.distribution(package).requires,
         ignore_extra=ignore_extra,
     )
     dependents: frozenset[str] = _get_required_by(package, ignore_extra=ignore_extra)
@@ -171,7 +169,8 @@ def _read_from_requirements(requirements: list[Path]) -> list[str]:
 
 def _freeze_packages(file: Path, packages: list[str]) -> None:
     frozen_packages: str = "\n".join(
-        f"{package}=={implib.distribution(package).version}" for package in packages
+        f"{package}=={importlib.metadata.distribution(package).version}"
+        for package in packages
     )
     file.write_text(f"{frozen_packages}\n", encoding="utf-8")
 
@@ -192,21 +191,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         if package in args.exclude:
             continue
 
-        package_dependencies[package] = _get_dependencies_of_package(
-            package,
-            ignore_extra=args.ignore_extra,
+        package_dependencies[package] = current_dependency_info = (
+            _get_dependencies_of_package(
+                package,
+                ignore_extra=args.ignore_extra,
+            )
         )
         logger.debug(
             "%s requires: %s",
             package,
-            ", ".join(package_dependencies[package].dependencies),
+            ", ".join(current_dependency_info.dependencies),
         )
         logger.debug(
             "%s is required by: %s",
             package,
-            ", ".join(package_dependencies[package].dependents),
+            ", ".join(current_dependency_info.dependents),
         )
-        for dependent_package in package_dependencies[package].dependencies.difference(
+        for dependent_package in current_dependency_info.dependencies.difference(
             args.exclude,
         ):
             package_dependencies[dependent_package] = _get_dependencies_of_package(
@@ -264,32 +265,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         _freeze_packages(args.freeze_file, packages_to_uninstall)
         logger.debug("Wrote packages to %s", args.freeze_file)
 
+    joind_pip_cmd: str = " ".join(PIP_CMD)
+    joind_uninstall_args: str = " ".join(uninstall_args)
+    joind_packages_to_uninstall: str = " ".join(packages_to_uninstall)
+
     if args.dry_run and uninstall_args and packages_to_uninstall:
         logger.info(
             "Would run: '%s uninstall %s %s'",
-            " ".join(PIP_CMD),
-            " ".join(uninstall_args),
-            " ".join(packages_to_uninstall),
+            joind_pip_cmd,
+            joind_uninstall_args,
+            joind_packages_to_uninstall,
         )
     elif args.dry_run and not uninstall_args and packages_to_uninstall:
         logger.info(
             "Would run: '%s uninstall %s'",
-            " ".join(PIP_CMD),
-            " ".join(packages_to_uninstall),
+            joind_pip_cmd,
+            joind_packages_to_uninstall,
         )
     elif not args.dry_run and packages_to_uninstall:
         if uninstall_args:
             logger.info(
                 "Running: '%s uninstall %s %s'",
-                " ".join(PIP_CMD),
-                " ".join(uninstall_args),
-                " ".join(packages_to_uninstall),
+                joind_pip_cmd,
+                joind_uninstall_args,
+                joind_packages_to_uninstall,
             )
         else:
             logger.info(
                 "Running: '%s uninstall %s'",
-                " ".join(PIP_CMD),
-                " ".join(packages_to_uninstall),
+                joind_pip_cmd,
+                joind_packages_to_uninstall,
             )
         uninstall_packages(
             packages_to_uninstall,
