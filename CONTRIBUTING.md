@@ -30,7 +30,7 @@ Otherwise you could also use [``virtualenv``](https://virtualenv.pypa.io/en/late
 
 #### Install development dependencies (only necessary for ``virtualenv`` or ``venv``)
 
-To install all the tools, plugins and other dependencies used for development and  ``auto-file-sorter`` as editable, run this:
+To install all the tools, plugins and other dependencies used for development and  ``pip-manage`` as editable, run this:
 
 ```bash
 pip install -e .[dev]
