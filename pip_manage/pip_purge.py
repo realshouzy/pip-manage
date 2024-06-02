@@ -199,12 +199,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.debug(
             "%s requires: %s",
             package,
-            ", ".join(dependency_info.dependencies),
+            dependency_info.dependencies,
         )
         logger.debug(
             "%s is required by: %s",
             package,
-            ", ".join(dependency_info.dependents),
+            dependency_info.dependents,
         )
         for dependent_package in dependency_info.dependencies.difference(
             args.exclude,
