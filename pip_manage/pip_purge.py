@@ -191,38 +191,40 @@ def main(argv: Sequence[str] | None = None) -> int:
         if package in args.exclude:
             continue
 
-        package_dependencies[package] = current_dependency_info = (
-            _get_dependencies_of_package(
-                package,
-                ignore_extra=args.ignore_extra,
-            )
+        package_dependencies[package] = _get_dependencies_of_package(
+            package,
+            ignore_extra=args.ignore_extra,
         )
+        dependency_info: _DependencyInfo = package_dependencies[package]
         logger.debug(
             "%s requires: %s",
             package,
-            ", ".join(current_dependency_info.dependencies),
+            ", ".join(dependency_info.dependencies),
         )
         logger.debug(
             "%s is required by: %s",
             package,
-            ", ".join(current_dependency_info.dependents),
+            ", ".join(dependency_info.dependents),
         )
-        for dependent_package in current_dependency_info.dependencies.difference(
+        for dependent_package in dependency_info.dependencies.difference(
             args.exclude,
         ):
             package_dependencies[dependent_package] = _get_dependencies_of_package(
                 dependent_package,
                 ignore_extra=args.ignore_extra,
             )
+            dependent_package_dependency_info: _DependencyInfo = package_dependencies[
+                dependent_package
+            ]
             logger.debug(
                 "%s requires: %s",
                 dependent_package,
-                ", ".join(package_dependencies[dependent_package].dependencies),
+                ", ".join(dependent_package_dependency_info.dependencies),
             )
             logger.debug(
                 "%s is required by: %s",
                 dependent_package,
-                ", ".join(package_dependencies[dependent_package].dependents),
+                ", ".join(dependent_package_dependency_info.dependents),
             )
 
     # In the first iteration, it is determined which packages should be kept
