@@ -182,6 +182,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=R0914
     logger.debug("Forwarded arguments: %s", forwarded)
     logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
+    if unrecognized_args := set(forwarded).difference(uninstall_args):
+        logger.warning("Unrecognized arguments: %s", ", ".join(unrecognized_args))
+
     package_dependencies: dict[str, _DependencyInfo] = {}
     for package in [*args.packages, *_read_from_requirements(args.requirements)]:
         if not _is_installed(package):
