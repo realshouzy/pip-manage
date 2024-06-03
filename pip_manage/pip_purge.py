@@ -175,7 +175,7 @@ def _freeze_packages(file: Path, packages: list[str]) -> None:
     file.write_text(f"{frozen_packages}\n", encoding="utf-8")
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=R0914
     args, forwarded = _parse_args(argv)
     uninstall_args: list[str] = filter_forwards_include(forwarded, UNINSTALL_ONLY)
     logger: logging.Logger = setup_logging(__title__, verbose=args.verbose)
@@ -191,11 +191,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if package in args.exclude:
             continue
 
-        package_dependencies[package] = _get_dependencies_of_package(
+        package_dependencies[package] = dependency_info = _get_dependencies_of_package(
             package,
             ignore_extra=args.ignore_extra,
         )
-        dependency_info: _DependencyInfo = package_dependencies[package]
         logger.debug(
             "%s requires: %s",
             package,
@@ -209,22 +208,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         for dependent_package in dependency_info.dependencies.difference(
             args.exclude,
         ):
-            package_dependencies[dependent_package] = _get_dependencies_of_package(
+            package_dependencies[dependent_package] = (
+                dependent_package_dependency_info
+            ) = _get_dependencies_of_package(
                 dependent_package,
                 ignore_extra=args.ignore_extra,
             )
-            dependent_package_dependency_info: _DependencyInfo = package_dependencies[
-                dependent_package
-            ]
             logger.debug(
                 "%s requires: %s",
                 dependent_package,
-                ", ".join(dependent_package_dependency_info.dependencies),
+                dependent_package_dependency_info.dependencies,
             )
             logger.debug(
                 "%s is required by: %s",
                 dependent_package,
-                ", ".join(dependent_package_dependency_info.dependents),
+                dependent_package_dependency_info.dependents,
             )
 
     # In the first iteration, it is determined which packages should be kept
@@ -263,6 +261,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     logger.debug("Finished checking packages")
 
+    if not packages_to_uninstall:
+        logger.info("No packages to purge")
+        return 0
+
     if args.freeze_packages:
         _freeze_packages(args.freeze_file, packages_to_uninstall)
         logger.debug("Wrote packages to %s", args.freeze_file)
@@ -270,41 +272,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     joind_pip_cmd: str = " ".join(PIP_CMD)
     joind_uninstall_args: str = " ".join(uninstall_args)
     joind_packages_to_uninstall: str = " ".join(packages_to_uninstall)
+    running: str = "Running" if not args.dry_run else "Would run"
+    if not uninstall_args:
+        msg: str = f"{running}: '{joind_pip_cmd} {joind_packages_to_uninstall}'"
+    else:
+        msg = (
+            f"{running}: '{joind_pip_cmd} {joind_uninstall_args} "
+            f"{joind_packages_to_uninstall}'"
+        )
+    logger.info(msg)
 
-    if args.dry_run and uninstall_args and packages_to_uninstall:
-        logger.info(
-            "Would run: '%s uninstall %s %s'",
-            joind_pip_cmd,
-            joind_uninstall_args,
-            joind_packages_to_uninstall,
-        )
-    elif args.dry_run and not uninstall_args and packages_to_uninstall:
-        logger.info(
-            "Would run: '%s uninstall %s'",
-            joind_pip_cmd,
-            joind_packages_to_uninstall,
-        )
-    elif not args.dry_run and packages_to_uninstall:
-        if uninstall_args:
-            logger.info(
-                "Running: '%s uninstall %s %s'",
-                joind_pip_cmd,
-                joind_uninstall_args,
-                joind_packages_to_uninstall,
-            )
-        else:
-            logger.info(
-                "Running: '%s uninstall %s'",
-                joind_pip_cmd,
-                joind_packages_to_uninstall,
-            )
+    if not args.dry_run:
         uninstall_packages(
             packages_to_uninstall,
             uninstall_args,
             continue_on_fail=args.continue_on_fail,
         )
-    else:
-        logger.info("No packages to purge")
     return 0
 
 
