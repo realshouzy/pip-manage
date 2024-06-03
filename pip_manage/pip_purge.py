@@ -269,16 +269,16 @@ def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=R0914
         _freeze_packages(args.freeze_file, packages_to_uninstall)
         logger.debug("Wrote packages to %s", args.freeze_file)
 
-    joind_pip_cmd: str = " ".join(PIP_CMD)
-    joind_uninstall_args: str = " ".join(uninstall_args)
-    joind_packages_to_uninstall: str = " ".join(packages_to_uninstall)
+    joined_pip_cmd: str = " ".join(PIP_CMD)
+    joined_uninstall_args: str = " ".join(uninstall_args)
+    joined_packages_to_uninstall: str = " ".join(packages_to_uninstall)
     running: str = "Running" if not args.dry_run else "Would run"
     if not uninstall_args:
-        msg: str = f"{running}: '{joind_pip_cmd} {joind_packages_to_uninstall}'"
+        msg: str = f"{running}: '{joined_pip_cmd} {joined_packages_to_uninstall}'"
     else:
         msg = (
-            f"{running}: '{joind_pip_cmd} {joind_uninstall_args} "
-            f"{joind_packages_to_uninstall}'"
+            f"{running}: '{joined_pip_cmd} {joined_uninstall_args} "
+            f"{joined_packages_to_uninstall}'"
         )
     logger.info(msg)
 
