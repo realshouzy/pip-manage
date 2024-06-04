@@ -15,17 +15,13 @@ else:  # pragma: <3.12 cover
 class _StdOutFilter(logging.Filter):
     @override
     def filter(self, record: logging.LogRecord) -> bool:
-        return record.levelno in {logging.DEBUG, logging.INFO}
+        return record.levelno <= logging.INFO
 
 
 def setup_logging(logger_name: str, *, verbose: bool) -> logging.Logger:
-    level: int = logging.DEBUG if verbose else logging.INFO
-
-    format_: str = "%(message)s"
-
     logger: logging.Logger = logging.getLogger(logger_name)
-
-    formatter: logging.Formatter = logging.Formatter(format_)
+    level: int = logging.DEBUG if verbose else logging.INFO
+    formatter: logging.Formatter = logging.Formatter("%(message)s")
 
     stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
     stdout_handler.set_name("stdout")
