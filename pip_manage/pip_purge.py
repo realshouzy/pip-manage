@@ -9,7 +9,7 @@ import importlib.metadata
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
-from pip_manage._logging import setup_logging
+from pip_manage._logging import set_logging_level, setup_logging
 from pip_manage._pip_interface import (
     PIP_CMD,
     UNINSTALL_ONLY,
@@ -28,6 +28,8 @@ so you can pass things such as '--yes' and '--break-system-packages' and
 they will do what you expect. See 'pip uninstall -h' for a full overview of the options.
 """
 )
+
+logger: logging.Logger = setup_logging(__title__)
 
 
 def _parse_args(
@@ -175,18 +177,27 @@ def _freeze_packages(file: Path, packages: list[str]) -> None:
     file.write_text(f"{frozen_packages}\n", encoding="utf-8")
 
 
-def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=R0914
+def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
+    argv: Sequence[str] | None = None,
+) -> int:
     args, forwarded = _parse_args(argv)
     uninstall_args: list[str] = filter_forwards_include(forwarded, UNINSTALL_ONLY)
-    logger: logging.Logger = setup_logging(__title__, verbose=args.verbose)
+    set_logging_level(logger, verbose=args.verbose)
     logger.debug("Forwarded arguments: %s", forwarded)
     logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
     if unrecognized_args := set(forwarded).difference(uninstall_args):
-        logger.warning("Unrecognized arguments: %s", ", ".join(unrecognized_args))
+        logger.warning(
+            "Unrecognized arguments: %s",
+            ", ".join(sorted(unrecognized_args)),
+        )
+
+    if not (packages := [*args.packages, *_read_from_requirements(args.requirements)]):
+        logger.error("No packages provided")
+        return 1
 
     package_dependencies: dict[str, _DependencyInfo] = {}
-    for package in [*args.packages, *_read_from_requirements(args.requirements)]:
+    for package in packages:
         if not _is_installed(package):
             logger.warning("%s is not installed", package)
             continue
@@ -268,6 +279,8 @@ def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=R0914
         logger.info("No packages to purge")
         return 0
 
+    packages_to_uninstall.sort()
+
     if args.freeze_packages:
         _freeze_packages(args.freeze_file, packages_to_uninstall)
         logger.debug("Wrote packages to %s", args.freeze_file)
@@ -276,8 +289,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # pylint: disable=R0914
     joined_uninstall_args: str = " ".join(uninstall_args)
     joined_packages_to_uninstall: str = " ".join(packages_to_uninstall)
     running: str = "Running" if not args.dry_run else "Would run"
+    msg: str
     if not uninstall_args:
-        msg: str = f"{running}: '{joined_pip_cmd} {joined_packages_to_uninstall}'"
+        msg = f"{running}: '{joined_pip_cmd} {joined_packages_to_uninstall}'"
     else:
         msg = (
             f"{running}: '{joined_pip_cmd} {joined_uninstall_args} "

@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
-from pip_manage._logging import setup_logging
+from pip_manage._logging import set_logging_level, setup_logging
 from pip_manage._pip_interface import (
     INSTALL_ONLY,
     LIST_ONLY,
@@ -33,6 +33,8 @@ and '--timeout' and they will do what you expect. See 'pip list -h' and 'pip ins
 for a full overview of the options.
 """
 )
+
+logger: logging.Logger = setup_logging(__title__)
 
 
 def _parse_args(
@@ -246,7 +248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         exclude=LIST_ONLY,
         include=INSTALL_ONLY,
     )
-    logger: logging.Logger = setup_logging(__title__, verbose=args.verbose)
+    set_logging_level(logger, verbose=args.verbose)
 
     logger.debug("Forwarded arguments: %s", forwarded)
     logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
@@ -281,10 +283,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     constraints_files: list[Path] = _get_constraints_files(install_args)
+    logger.debug("Constraints files: %s", constraints_files)
 
     _set_constraints_of_outdated_pkgs(constraints_files, outdated)
-
-    logger.debug("Constraints files: %s", constraints_files)
     logger.debug(
         "Outdated packages with new set constraints: %s",
         outdated,

@@ -130,6 +130,7 @@ line-length = 88
 [tool.ruff.lint.extend-per-file-ignores]
 "./tests/*_test.py" = ["S101", "SLF001", "PLR0913", "F811", "F401"]
 "./tests/*.py" = ["D104"]
+"./tests/pip_review_test.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["pip_manage", "tests"]
@@ -148,6 +149,7 @@ disable = [
   "R0911",
   "W0511",
   "W0212",
+  "R0801",
 ]
 load-plugins = "pylint_pytest"
 

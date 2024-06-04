@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__: list[str] = ["setup_logging"]
+__all__: list[str] = ["setup_logging", "set_logging_level"]
 
 import logging
 import sys
@@ -18,9 +18,8 @@ class _StdOutFilter(logging.Filter):
         return record.levelno <= logging.INFO
 
 
-def setup_logging(logger_name: str, *, verbose: bool) -> logging.Logger:
+def setup_logging(logger_name: str) -> logging.Logger:
     logger: logging.Logger = logging.getLogger(logger_name)
-    level: int = logging.DEBUG if verbose else logging.INFO
     formatter: logging.Formatter = logging.Formatter("%(message)s")
 
     stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
@@ -34,7 +33,10 @@ def setup_logging(logger_name: str, *, verbose: bool) -> logging.Logger:
     stderr_handler.setFormatter(formatter)
     stderr_handler.setLevel(logging.WARNING)
 
-    logger.setLevel(level)
     logger.addHandler(stderr_handler)
     logger.addHandler(stdout_handler)
     return logger
+
+
+def set_logging_level(logger: logging.Logger, *, verbose: bool) -> None:
+    logger.setLevel(logging.DEBUG if verbose else logging.INFO)

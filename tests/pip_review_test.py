@@ -390,7 +390,7 @@ def test_format_table() -> None:
         ["Constraints", "None", "1.1.0"],
     ]
     expected_result: str = (
-        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel 1.1.0      \n----------------------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel 1.1.0      \n----------------------------------------"
     )
     assert pip_review._format_table(test_columns) == expected_result
 
@@ -410,25 +410,25 @@ def test_format_table_value_error_when_columns_are_not_the_same_length() -> None
 @pytest.mark.parametrize(
     ("args", "err_msg"),
     [
-        (["--raw", "--auto"], "'--raw' and '--auto' cannot be used together\n"),
+        (["--raw", "--auto"], "'--raw' and '--auto' cannot be used together"),
         (
             ["--raw", "--interactive"],
-            "'--raw' and '--interactive' cannot be used together\n",
+            "'--raw' and '--interactive' cannot be used together",
         ),
         (
             ["--auto", "--interactive"],
-            "'--auto' and '--interactive' cannot be used together\n",
+            "'--auto' and '--interactive' cannot be used together",
         ),
     ],
 )
 def test_main_mutually_exclusive_args_error(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     args: list[str],
     err_msg: str,
 ) -> None:
     exit_code: int = pip_review.main(args)
     assert exit_code == 1
-    assert err_msg in capsys.readouterr().err
+    assert ("pip-review", 40, err_msg) in caplog.record_tuples
 
 
 @pytest.mark.parametrize(
@@ -446,7 +446,7 @@ def test_main_mutually_exclusive_args_error(
     ],
 )
 def test_main_no_outdated_packages(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     args: list[str],
 ) -> None:
     with mock.patch(
@@ -455,12 +455,12 @@ def test_main_no_outdated_packages(
     ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main(args)
 
-    assert "Everything up-to-date" in capsys.readouterr().out
+    assert [("pip-review", 20, "Everything up-to-date")] == caplog.record_tuples
     assert exit_code == 0
 
 
 def test_main_default_output_with_outdated_packages(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
 ) -> None:
     with mock.patch(
@@ -468,16 +468,23 @@ def test_main_default_output_with_outdated_packages(
         return_value=sample_subprocess_output,
     ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main([])
-
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        (
+            "pip-review",
+            20,
+            "test1==1.1.0 is available (you have 1.0.0)",
+        ),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9)",
+        ),
+    ]
     assert exit_code == 0
 
 
 def test_main_default_output_with_outdated_packages_and_constraints_env_var(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
 ) -> None:
@@ -490,17 +497,24 @@ def test_main_default_output_with_outdated_packages_and_constraints_env_var(
     ), mock.patch("os.getenv", return_value=str(constraints_file)):
         exit_code: int = pip_review.main([])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        (
+            "pip-review",
+            20,
+            "test1==1.1.0 is available (you have 1.0.0)",
+        ),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     assert exit_code == 0
 
 
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
 def test_main_default_output_with_outdated_packages_and_positional_arg_constraints_file(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     constraint_arg: str,
@@ -513,18 +527,24 @@ def test_main_default_output_with_outdated_packages_and_positional_arg_constrain
         return_value=sample_subprocess_output,
     ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main([constraint_arg, str(constraints_file)])
-
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        (
+            "pip-review",
+            20,
+            "test1==1.1.0 is available (you have 1.0.0)",
+        ),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     assert exit_code == 0
 
 
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_default_output_with_outdated_packages_and_positional_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_default_output_with_outdated_packages_and_positional_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     constraint_arg: str,
@@ -542,18 +562,20 @@ def test_main_default_output_with_outdated_packages_and_positional_arg_constrain
             [constraint_arg, str(constraints_file2)],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     assert exit_code == 0
 
 
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
 def test_main_default_output_with_outdated_packages_and_named_arg_constraints_file(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     constraint_arg: str,
@@ -567,17 +589,20 @@ def test_main_default_output_with_outdated_packages_and_named_arg_constraints_fi
     ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main([f"{constraint_arg}={constraints_file}"])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     assert exit_code == 0
 
 
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_default_output_with_outdated_packages_and_named_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_default_output_with_outdated_packages_and_named_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     constraint_arg: str,
@@ -595,12 +620,14 @@ def test_main_default_output_with_outdated_packages_and_named_arg_constraints_fi
             [f"{constraint_arg}={constraints_file2}"],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     assert exit_code == 0
 
 
@@ -624,7 +651,7 @@ def test_main_freeze_outdated_packages(
 
 @pytest.mark.parametrize("arg", ["--raw", "-r"])
 def test_main_with_raw(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     arg: str,
 ) -> None:
@@ -634,14 +661,25 @@ def test_main_with_raw(
     ):
         exit_code: int = pip_review.main([arg])
 
-    assert "test1==1.1.0\ntest2==2.0.0\n" in capsys.readouterr().out
+    assert caplog.record_tuples == [
+        (
+            "pip-review",
+            20,
+            "test1==1.1.0",
+        ),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0",
+        ),
+    ]
     assert exit_code == 0
 
 
 @pytest.mark.parametrize("upgrade_arg", ["--auto", "-a", "-i", "--interactive"])
 @pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
 def test_main_preview_runs_when_upgrading_without_constraints(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     preview_arg: str,
     upgrade_arg: str,
@@ -662,9 +700,9 @@ def test_main_preview_runs_when_upgrading_without_constraints(
         exit_code: int = pip_review.main([preview_arg, upgrade_arg])
 
     expected_result: str = (
-        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel None       \n----------------------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel None       \n----------------------------------------"
     )
-    assert expected_result in capsys.readouterr().out
+    assert ("pip-review", 20, expected_result) in caplog.record_tuples
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -684,7 +722,7 @@ def test_main_preview_runs_when_upgrading_without_constraints(
 @pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
 def test_main_preview_runs_when_upgrading_with_constraints(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     preview_arg: str,
     upgrade_arg: str,
@@ -708,9 +746,9 @@ def test_main_preview_runs_when_upgrading_with_constraints(
         exit_code: int = pip_review.main([preview_arg, upgrade_arg])
 
     expected_result: str = (
-        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel 1.9.9.9    \n----------------------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel 1.9.9.9    \n----------------------------------------"
     )
-    assert expected_result in capsys.readouterr().out
+    assert ("pip-review", 20, expected_result) in caplog.record_tuples
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -728,7 +766,7 @@ def test_main_preview_runs_when_upgrading_with_constraints(
 
 @pytest.mark.parametrize("preview_arg", ["--preview", "-p"])
 def test_main_preview_does_not_run_when_not_upgrading(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     preview_arg: str,
 ) -> None:
@@ -746,9 +784,9 @@ def test_main_preview_does_not_run_when_not_upgrading(
         exit_code: int = pip_review.main([preview_arg])
 
     expected_result: str = (
-        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel None       \n----------------------------------------"  # noqa: E501
+        "Package Version Latest Type  Constraints\n----------------------------------------\ntest1   1.0.0   1.1.0  wheel None       \ntest2   1.9.9   2.0.0  wheel None       \n----------------------------------------"
     )
-    assert expected_result not in capsys.readouterr().out
+    assert ("pip-review", 20, expected_result) not in caplog.record_tuples
     assert exit_code == 0
 
 
@@ -836,7 +874,7 @@ def test_main_auto_continue_on_fail_set_to_true(
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("arg", ["--interactive", "-i"])
 def test_main_interactive_confirm_all_continue_on_fail_set_to_false(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     user_input: str,
     arg: str,
@@ -855,10 +893,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false(
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9)",
+        ),
+    ]
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -877,7 +919,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false(
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("arg", ["--interactive", "-i"])
 def test_main_interactive_confirm_all_continue_on_fail_set_to_true(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     user_input: str,
     arg: str,
@@ -896,10 +938,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true(
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg, "--continue-on-fail"])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9)",
+        ),
+    ]
     expected_calls: list[mock._Call] = [
         mock.call(
             [
@@ -929,7 +975,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true(
 @pytest.mark.parametrize("user_input", ["n", "q"])
 @pytest.mark.parametrize("arg", ["--interactive", "-i"])
 def test_main_interactive_deny_all(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     sample_subprocess_output: bytes,
     user_input: str,
     arg: str,
@@ -948,18 +994,22 @@ def test_main_interactive_deny_all(
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9)\n" in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9)",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
 
 
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("arg", ["--interactive", "-i"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -982,11 +1032,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_constra
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -1004,8 +1057,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_constra
 
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("arg", ["--interactive", "-i"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1028,11 +1081,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_constrai
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg, "--continue-on-fail"])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     expected_calls: list[mock._Call] = [
         mock.call(
             [
@@ -1062,7 +1118,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_constrai
 @pytest.mark.parametrize("user_input", ["n", "q"])
 @pytest.mark.parametrize("arg", ["--interactive", "-i"])
 def test_main_interactive_deny_all_with_constraints_env_var(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1085,11 +1141,14 @@ def test_main_interactive_deny_all_with_constraints_env_var(
     ) as mock_subprocess_call:
         exit_code: int = pip_review.main([arg])
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
 
@@ -1097,8 +1156,8 @@ def test_main_interactive_deny_all_with_constraints_env_var(
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positional_arg_constraints_file(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positional_arg_constraints_file(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1124,11 +1183,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
             [interactive_arg, constraint_arg, str(constraints_file)],
         )
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -1149,8 +1211,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_positional_arg_constraints_file(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_positional_arg_constraints_file(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1181,11 +1243,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
             ],
         )
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     expected_calls: list[mock._Call] = [
         mock.call(
             [
@@ -1220,7 +1285,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
 def test_main_interactive_deny_all_with_positional_arg_constraints_file(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1250,11 +1315,14 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file(
             ],
         )
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
 
@@ -1262,8 +1330,8 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file(
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_arg_constraints_file(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_arg_constraints_file(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1289,11 +1357,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
             [interactive_arg, f"{constraint_arg}={constraints_file}"],
         )
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -1313,8 +1384,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_arg_constraints_file(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_arg_constraints_file(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1344,11 +1415,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
             ],
         )
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     expected_calls: list[mock._Call] = [
         mock.call(
             [
@@ -1381,7 +1455,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
 def test_main_interactive_deny_all_with_named_arg_constraints_file(
-    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1410,11 +1484,14 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file(
             ],
         )
 
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.9]",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
 
@@ -1422,8 +1499,8 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file(
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positional_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positional_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1451,12 +1528,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
             [interactive_arg, constraint_arg, str(constraints_file2)],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -1477,8 +1556,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_positional_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_positional_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1511,12 +1590,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
             ],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     expected_calls: list[mock._Call] = [
         mock.call(
             [
@@ -1550,8 +1631,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
 @pytest.mark.parametrize("user_input", ["n", "q"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1583,12 +1664,14 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_cons
             ],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
 
@@ -1596,8 +1679,8 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_cons
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1625,12 +1708,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
             [interactive_arg, f"{constraint_arg}={constraints_file2}"],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     expected_cmd: list[str] = [
         *PIP_CMD,
         "install",
@@ -1650,8 +1735,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
 @pytest.mark.parametrize("user_input", ["y", "a"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1683,12 +1768,14 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
             ],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     expected_calls: list[mock._Call] = [
         mock.call(
             [
@@ -1720,8 +1807,8 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
 @pytest.mark.parametrize("user_input", ["n", "q"])
 @pytest.mark.parametrize("interactive_arg", ["--interactive", "-i"])
 @pytest.mark.parametrize("constraint_arg", ["--constraint", "-c"])
-def test_main_interactive_deny_all_with_named_arg_constraints_file_and_constraints_env_var(  # noqa: E501
-    capsys: pytest.CaptureFixture[str],
+def test_main_interactive_deny_all_with_named_arg_constraints_file_and_constraints_env_var(
+    caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
     sample_subprocess_output: bytes,
     user_input: str,
@@ -1752,12 +1839,14 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file_and_constrain
             ],
         )
 
-    constraints: str = ", ".join(sorted({"1.9.9.8", "1.9.9.9"}))
-    assert (
-        "test1==1.1.0 is available (you have 1.0.0)\n"
-        f"test2==2.0.0 is available (you have 1.9.9) [Constraint to {constraints}]\n"
-        in capsys.readouterr().out
-    )
+    assert caplog.record_tuples == [
+        ("pip-review", 20, "test1==1.1.0 is available (you have 1.0.0)"),
+        (
+            "pip-review",
+            20,
+            "test2==2.0.0 is available (you have 1.9.9) [Constraint to 1.9.9.8, 1.9.9.9]",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 0
 
