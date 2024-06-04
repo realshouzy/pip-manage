@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__: Final[tuple[str, ...]] = (
+__all__: list[str] = [
     "update_packages",
     "get_outdated_packages",
     "uninstall_packages",
@@ -8,7 +8,7 @@ __all__: Final[tuple[str, ...]] = (
     "LIST_ONLY",
     "INSTALL_ONLY",
     "UNINSTALL_ONLY",
-)
+]
 
 import dataclasses
 import json

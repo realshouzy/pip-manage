@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-__all__: Final[tuple[str, ...]] = ("setup_logging",)
+__all__: list[str] = ["setup_logging"]
 
 import logging
 import sys
-from typing import Final, TextIO
+from typing import TextIO
 
 if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
     from typing import override
