@@ -15,6 +15,21 @@ from pip_manage._pip_interface import PIP_CMD
 from tests.fixtures import dummy_dependencies  # pylint: disable=W0611
 
 
+def _raise_package_not_found_error_when_package_c(package: str) -> None:
+    if package == "package_c":
+        raise importlib.metadata.PackageNotFoundError
+
+
+def _custom_importlib_metadata_distribution(
+    package: str,
+    dummy: list[SimpleNamespace],
+) -> SimpleNamespace:
+    for dummy_package in dummy:
+        if dummy_package.name == package:
+            return dummy_package
+    raise importlib.metadata.PackageNotFoundError
+
+
 @pytest.mark.parametrize(
     ("constant", "expected"),
     [
@@ -155,11 +170,6 @@ def test_is_installed_with_mocked_package_found() -> None:
         assert pip_purge._is_installed("test")
 
 
-def _raise_package_not_found_error_when_package_c(package: str) -> None:
-    if package == "package_c":
-        raise importlib.metadata.PackageNotFoundError
-
-
 def test_parse_requirements_without_ignoring_extra() -> None:
     with mock.patch(
         "importlib.metadata.distribution",
@@ -266,16 +276,6 @@ def test_get_required_by_with_ignoring_extra(
             dummy_dependencies[4].name,
             ignore_extra=True,
         ) == frozenset(())
-
-
-def _custom_importlib_metadata_distribution(
-    package: str,
-    dummy: list[SimpleNamespace],
-) -> SimpleNamespace:
-    for dummy_package in dummy:
-        if dummy_package.name == package:
-            return dummy_package
-    raise importlib.metadata.PackageNotFoundError
 
 
 def test_get_dependencies_of_package_without_ignoring_extra(
