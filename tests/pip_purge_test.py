@@ -422,7 +422,11 @@ def test_main_warn_about_unrecognized_args_before_error_exit_when_no_packages_pr
         "importlib.metadata.distributions",
     ):
         exit_code: int = pip_purge.main(["-v", "-a", "-b", "-y"])
-    assert ("pip-purge", 30, "Unrecognized arguments: -a, -b") in caplog.record_tuples
+    assert (
+        "pip-purge",
+        30,
+        "Unrecognized arguments: '-a', '-b'",
+    ) in caplog.record_tuples
     assert ("pip-purge", 40, "No packages provided") in caplog.record_tuples
     assert exit_code == 1
 
@@ -434,7 +438,11 @@ def test_main_warn_about_unrecognized_args(caplog: pytest.LogCaptureFixture) -> 
         "subprocess.call",
     ):
         exit_code: int = pip_purge.main(["package_a", "-v", "-a", "-b", "-y"])
-    assert ("pip-purge", 30, "Unrecognized arguments: -a, -b") in caplog.record_tuples
+    assert (
+        "pip-purge",
+        30,
+        "Unrecognized arguments: '-a', '-b'",
+    ) in caplog.record_tuples
     assert exit_code == 0
 
 

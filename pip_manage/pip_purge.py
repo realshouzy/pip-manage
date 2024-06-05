@@ -187,9 +187,12 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
     if unrecognized_args := set(forwarded).difference(uninstall_args):
+        formatted_unrecognized_arg: list[str] = [
+            f"'{unrecognized_arg}'" for unrecognized_arg in sorted(unrecognized_args)
+        ]
         logger.warning(
             "Unrecognized arguments: %s",
-            ", ".join(sorted(unrecognized_args)),
+            ", ".join(formatted_unrecognized_arg),
         )
 
     if not (packages := [*args.packages, *_read_from_requirements(args.requirements)]):
