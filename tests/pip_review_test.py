@@ -427,33 +427,77 @@ def test_main_mutually_exclusive_args_error(
     err_msg: str,
 ) -> None:
     exit_code: int = pip_review.main(args)
-    assert exit_code == 1
     assert ("pip-review", 40, err_msg) in caplog.record_tuples
+    assert exit_code == 1
+
+
+def test_main_warn_about_unrecognized_args(caplog: pytest.LogCaptureFixture) -> None:
+    with mock.patch("importlib.metadata.distribution"), mock.patch(
+        "importlib.metadata.distributions",
+    ), mock.patch(
+        "subprocess.call",
+    ):
+        exit_code: int = pip_review.main(["-x", "-v", "-a"])
+    assert (
+        "pip-review",
+        30,
+        "Unrecognized arguments: '-x'",
+    ) in caplog.record_tuples
+    assert exit_code == 0
 
 
 @pytest.mark.parametrize(
-    "args",
+    ("args", "err_msg"),
+    [
+        (["--raw", "--auto"], "'--raw' and '--auto' cannot be used together"),
+        (
+            ["--raw", "--interactive"],
+            "'--raw' and '--interactive' cannot be used together",
+        ),
+        (
+            ["--auto", "--interactive"],
+            "'--auto' and '--interactive' cannot be used together",
+        ),
+    ],
+)
+def test_main_mutually_warn_about_unrecognized_args_before_exclusive_args_error(
+    caplog: pytest.LogCaptureFixture,
+    args: list[str],
+    err_msg: str,
+) -> None:
+    exit_code: int = pip_review.main([*args, "-x"])
+    assert caplog.record_tuples == [
+        (
+            "pip-review",
+            30,
+            "Unrecognized arguments: '-x'",
+        ),
+        ("pip-review", 40, err_msg),
+    ]
+    assert exit_code == 1
+
+
+@pytest.mark.parametrize(
+    "arg",
     [
         "--preview",
         "-p",
         "--freeze-outdated-packages",
         "--auto",
         "-a",
-        "--raw",
-        "-r",
         "--interactive",
         "-i",
     ],
 )
 def test_main_no_outdated_packages(
     caplog: pytest.LogCaptureFixture,
-    args: list[str],
+    arg: str,
 ) -> None:
     with mock.patch(
         "subprocess.check_output",
         return_value=b"{}",
     ), mock.patch("os.getenv", return_value=None):
-        exit_code: int = pip_review.main(args)
+        exit_code: int = pip_review.main([arg])
 
     assert [("pip-review", 20, "Everything up-to-date")] == caplog.record_tuples
     assert exit_code == 0

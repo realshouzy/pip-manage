@@ -254,6 +254,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
     logger.debug("Arguments forwarded to 'pip install': %s", install_args)
 
+    if unrecognized_args := set(forwarded).difference(list_args, install_args):
+        formatted_unrecognized_arg: list[str] = [
+            f"'{unrecognized_arg}'" for unrecognized_arg in sorted(unrecognized_args)
+        ]
+        logger.warning(
+            "Unrecognized arguments: %s",
+            ", ".join(formatted_unrecognized_arg),
+        )
+
     if args.raw and args.auto:
         logger.error("'--raw' and '--auto' cannot be used together")
         return 1
