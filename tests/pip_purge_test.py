@@ -468,7 +468,7 @@ def test_main_warn_about_not_installed_packages(
         (
             "pip-purge",
             20,
-            f"Running: '{' '.join(PIP_CMD)} package_a package_b package_e'",
+            f"Running: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
     assert exit_code == 0
@@ -495,7 +495,7 @@ def test_main_only_package(
         (
             "pip-purge",
             20,
-            f"Running: '{' '.join(PIP_CMD)} package_a package_b package_e'",
+            f"Running: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
     mock_subprocess_call.assert_called_once_with(
@@ -557,7 +557,8 @@ def test_main_with_uninstall_args(
         (
             "pip-purge",
             20,
-            f"Running: '{' '.join(PIP_CMD)} -y package_a package_b package_e'",
+            f"Running: '{' '.join(PIP_CMD)} uninstall -y "
+            "package_a package_b package_e'",
         ),
     ]
     mock_subprocess_call.assert_called_once_with(
@@ -591,7 +592,7 @@ def test_main_dry_run(
         (
             "pip-purge",
             20,
-            f"Would run: '{' '.join(PIP_CMD)} package_a package_b package_e'",
+            f"Would run: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
     mock_subprocess_call.assert_not_called()
@@ -621,7 +622,7 @@ def test_main_continue_on_fail(
         (
             "pip-purge",
             20,
-            f"Running: '{' '.join(PIP_CMD)} package_a package_b package_e'",
+            f"Running: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
     expected_calls: list[mock._Call] = [
@@ -676,7 +677,7 @@ def test_main_freeze_packages(
         (
             "pip-purge",
             20,
-            f"Running: '{' '.join(PIP_CMD)} package_a package_b package_e'",
+            f"Running: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
     assert (

@@ -301,10 +301,10 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     running: str = "Running" if not args.dry_run else "Would run"
     msg: str
     if not uninstall_args:
-        msg = f"{running}: '{joined_pip_cmd} {joined_packages_to_uninstall}'"
+        msg = f"{running}: '{joined_pip_cmd} uninstall {joined_packages_to_uninstall}'"
     else:
         msg = (
-            f"{running}: '{joined_pip_cmd} {joined_uninstall_args} "
+            f"{running}: '{joined_pip_cmd} uninstall {joined_uninstall_args} "
             f"{joined_packages_to_uninstall}'"
         )
     _logger.info(msg)
