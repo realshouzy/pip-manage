@@ -122,24 +122,29 @@ def _parse_requirements(
 ) -> frozenset[str]:
     if not requirements:
         return frozenset()
-    return frozenset(
-        require
-        for requirement in requirements
-        if _is_installed(require := requirement.partition(" ")[0])
-        and (
-            (ignore_extra) ^ ("extra == " in requirement)  # xor
-            or not ignore_extra
-            and "extra == " not in requirement
+
+    parsed_requirements: set[str] = set()
+    for requirement in requirements:
+        requirement_name: str = requirement.partition(" ")[0]
+        is_installed: bool = _is_installed(requirement_name)
+        has_extra: bool = "extra == " in requirement
+        either_has_extra_or_ignore_extra_or_neither: bool = (
+            (ignore_extra and not has_extra)
+            or (not ignore_extra and has_extra)
+            or (not ignore_extra and not has_extra)
         )
-    )
+        if is_installed and either_has_extra_or_ignore_extra_or_neither:
+            parsed_requirements.add(requirement_name)
+
+    return frozenset(parsed_requirements)
 
 
 def _get_required_by(package: str, *, ignore_extra: bool) -> frozenset[str]:
     return frozenset(
-        dist_name
+        dist.name
         for dist in importlib.metadata.distributions()
-        if (dist_name := dist.name.partition(" ")[0]) != package
-        and package in _parse_requirements(dist.requires, ignore_extra=ignore_extra)
+        if dist.name != package
+        and (package in _parse_requirements(dist.requires, ignore_extra=ignore_extra))
     )
 
 
