@@ -166,11 +166,11 @@ def _get_dependencies_of_package(
     return _DependencyInfo(dependencies, dependents)
 
 
-def _read_from_requirements(requirements: list[Path]) -> list[str]:
+def _read_from_requirements(requirement_files: list[Path]) -> list[str]:
     return [
-        package.strip()
-        for requirement in requirements
-        for package in requirement.read_text(encoding="utf-8").splitlines()
+        requirement.strip()
+        for requirement_file in requirement_files
+        for requirement in requirement_file.read_text(encoding="utf-8").splitlines()
     ]
 
 
