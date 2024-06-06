@@ -1,9 +1,14 @@
 # pip-manage
 
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/realshouzy/pip-manage/main.svg)](https://results.pre-commit.ci/latest/github/realshouzy/pip-review/main)
-[![pylint status](https://github.com/realshouzy/pip-manage/actions/workflows/pylint.yaml/badge.svg)](https://github.com/realshouzy/pip-review/actions/workflows/pylint.yaml)
-[![tests status](https://github.com/realshouzy/pip-manage/actions/workflows/test.yaml/badge.svg)](https://github.com/realshouzy/pip-review/actions/workflows/test.yaml)
-[![CodeQL](https://github.com/realshouzy/pip-manage/actions/workflows/codeql.yaml/badge.svg)](https://github.com/realshouzy/pip-review/actions/workflows/codeql.yaml)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/realshouzy/pip-manage/main.svg)](https://results.pre-commit.ci/latest/github/realshouzy/pip-manage/main)
+[![pylint status](https://github.com/realshouzy/pip-manage/actions/workflows/pylint.yaml/badge.svg)](https://github.com/realshouzy/pip-manage/actions/workflows/pylint.yaml)
+[![tests status](https://github.com/realshouzy/pip-manage/actions/workflows/test.yaml/badge.svg)](https://github.com/realshouzy/pip-manage/actions/workflows/test.yaml)
+[![CodeQL](https://github.com/realshouzy/pip-manage/actions/workflows/codeql.yaml/badge.svg)](https://github.com/realshouzy/pip-manage/actions/workflows/codeql.yaml)
+[![PyPI - Version](https://img.shields.io/pypi/v/pip-manage)](https://github.com/realshouzy/pip-manage/releases/latest)
+[![Python versions](https://img.shields.io/pypi/pyversions/pip-manage.svg)](https://pypi.org/project/pip-manage/)
+[![Licens](https://img.shields.io/pypi/l/pip-manage)](https://github.com/realshouzy/pip-review/blob/main/LICENSE)
+[![semantic-release](https://img.shields.io/badge/%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/realshouzy/pip-manage/releases)
+[![PyPI - Format](https://img.shields.io/pypi/format/pip-manage)](https://pypi.org/project/pip-manage/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
@@ -203,7 +208,7 @@ If you are interested in contributing to this project, please refer [here](/CONT
 
 ## Origins and credit
 
-`pip-review` is derived from the original project of the same name created by Julian Gonggrijp. This implementation is a refactored and enhanced version of the [original](https://github.com/jgonggrijp/pip-review).
+`pip-review` is derived from the original project of the same name created by Julian Gonggrijp. This fork is a refactored and enhanced version of the [original](https://github.com/jgonggrijp/pip-review).
 
 Included from the original project:
 `pip-review` was originally part of
