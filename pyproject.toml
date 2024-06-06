@@ -11,10 +11,9 @@ authors = [
 name = "pip-manage"
 description = "pip-manage lets you smoothly manage your installed packages."
 readme = "README.md"
-license = { text = "BSD/MIT" }
+license = { text = "BSD" }
 maintainers = [{ name = "realshouzy" }]
 classifiers = [
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.8",
@@ -59,7 +58,7 @@ pip-purge = "pip_manage.pip_purge:main"
 
 [tool.setuptools]
 packages = ["pip_manage"]
-license-files = ["LICENSE-BSD", "LICENSE-MIT"]
+license-files = ["LICENSE"]
 platforms = ["any"]
 
 [tool.setuptools.dynamic]
