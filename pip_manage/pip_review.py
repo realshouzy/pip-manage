@@ -91,7 +91,10 @@ def _parse_args(
         metavar="FILE_PATH",
         type=lambda path: Path(path.strip()).resolve(),
         default=Path("outdated.txt").resolve(),
-        help="Specify the file path to store the frozen packages",
+        help=(
+            "Specify the file path to store the frozen packages "
+            "(default 'outdated.txt')"
+        ),
     )
     parser.add_argument(
         "--preview",
