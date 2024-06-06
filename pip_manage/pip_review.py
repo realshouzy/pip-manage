@@ -2,103 +2,39 @@
 """pip-review lets you smoothly manage all available PyPI updates."""
 from __future__ import annotations
 
-__version__: Final[str] = "1.4.0"
 __title__: Final[str] = "pip-review"
 
 import argparse
-import dataclasses
-import json
-import logging
 import os
-import subprocess  # nosec
-import sys
-from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, NamedTuple, TextIO
+from typing import TYPE_CHECKING, Final, NamedTuple
 
-if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
-    from typing import Self, override
-else:  # pragma: <3.12 cover
-    from typing_extensions import Self, override
-
+from pip_manage._logging import set_logging_level, setup_logging
+from pip_manage._pip_interface import (
+    INSTALL_ONLY,
+    LIST_ONLY,
+    filter_forwards,
+    get_outdated_packages,
+    update_packages,
+)
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Callable, Sequence
-    from collections.abc import Set as AbstractSet
 
-_EPILOG: Final[
-    str
-] = """
+    from pip_manage._pip_interface import _OutdatedPackage
+
+
+_EPILOG: Final[str] = (
+    """
 Unrecognised arguments will be forwarded to 'pip list --outdated' and
-pip install, so you can pass things such as '--user', '--pre' and '--timeout'
-and they will do what you expect. See 'pip list -h' and 'pip install -h'
+'pip install' (if supported), so you can pass things such as '--user', '--pre'
+and '--timeout' and they will do what you expect. See 'pip list -h' and 'pip install -h'
 for a full overview of the options.
 """
-
-# parameters that pip list supports but not pip install
-_LIST_ONLY: Final[frozenset[str]] = frozenset(
-    (
-        "l",
-        "local",
-        "path",
-        "pre",
-        "format",
-        "not-required",
-        "exclude-editable",
-        "include-editable",
-        "exclude",
-    ),
 )
 
-# parameters that pip install supports but not pip list
-_INSTALL_ONLY: Final[frozenset[str]] = frozenset(
-    (
-        "c",
-        "constraint",
-        "no-deps",
-        "dry-run",
-        "t",
-        "target",
-        "platform",
-        "python-version",
-        "implementation",
-        "abi",
-        "root",
-        "prefix",
-        "b",
-        "build",
-        "src",
-        "U",
-        "upgrade",
-        "upgrade-strategy",
-        "force-reinstall",
-        "I",
-        "ignore-installed",
-        "ignore-requires-python",
-        "no-build-isolation",
-        "use-pep517",
-        "check-build-dependencies",
-        "break-system-packages",
-        "C",
-        "config-settings",
-        "global-option",
-        "compile",
-        "no-compile",
-        "no-warn-script-location",
-        "no-warn-conflicts",
-        "no-binary",
-        "only-binary",
-        "prefer-binary",
-        "require-hashes",
-        "progress-bar",
-        "root-user-action",
-        "report",
-        "no-clean",
-    ),
-)
-
-# command that sets up the pip module of the current Python interpreter
-_PIP_CMD: Final[tuple[str, ...]] = (sys.executable, "-m", "pip")
+_logger: logging.Logger = setup_logging(__title__)
 
 
 def _parse_args(
@@ -154,8 +90,11 @@ def _parse_args(
         "-f",
         metavar="FILE_PATH",
         type=lambda path: Path(path.strip()).resolve(),
-        default=Path("outdated.txt").resolve(),
-        help="Specify the file path to store the frozen packages",
+        default=Path("backup.txt").resolve(),
+        help=(
+            "Specify the file path to store the frozen packages "
+            "(default 'backup.txt')"
+        ),
     )
     parser.add_argument(
         "--preview",
@@ -167,72 +106,21 @@ def _parse_args(
     return parser.parse_known_args(args)
 
 
-def _filter_forwards(args: list[str], exclude: AbstractSet[str]) -> list[str]:
-    """Return only the parts of `args` that do not appear in `exclude`."""
-    result: list[str] = []
-    # Start with false, because an unknown argument not starting with a dash
-    # probably would just trip pip.
-    admitted: bool = False
-    for arg in args:
-        arg_name: str = arg.partition("=")[0].lstrip("-")
-
-        if not arg.startswith("-") and admitted:
-            # assume this belongs with the previous argument.
-            result.append(arg)
-        elif not arg.startswith("-") and not admitted:
-            continue
-        elif arg_name in exclude:
-            admitted = False
-        else:
-            result.append(arg)
-            admitted = True
-    return result
-
-
-class _StdOutFilter(logging.Filter):
-    @override
-    def filter(self, record: logging.LogRecord) -> bool:
-        return record.levelno in {logging.DEBUG, logging.INFO}
-
-
-def _setup_logging(*, verbose: bool) -> logging.Logger:
-    level: int = logging.DEBUG if verbose else logging.INFO
-
-    format_: str = "%(message)s"
-
-    logger: logging.Logger = logging.getLogger(__title__)
-
-    stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
-    stdout_handler.set_name("stdout")
-    stdout_handler.addFilter(_StdOutFilter())
-    stdout_handler.setFormatter(logging.Formatter(format_))
-    stdout_handler.setLevel(logging.DEBUG)
-
-    stderr_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stderr)
-    stderr_handler.set_name("stderr")
-    stderr_handler.setFormatter(logging.Formatter(format_))
-    stderr_handler.setLevel(logging.WARNING)
-
-    logger.setLevel(level)
-    logger.addHandler(stderr_handler)
-    logger.addHandler(stdout_handler)
-    return logger
-
-
 class _InteractiveAsker:
-    def __init__(self) -> None:
+    def __init__(self, prompt: str) -> None:
+        self.prompt: str = prompt
         self.cached_answer: str | None = None
         self.last_answer: str | None = None
 
-    def ask(self, prompt: str) -> str:
+    def ask(self) -> str:
         if self.cached_answer is not None:
             return self.cached_answer
 
-        question_default: str = f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit "
+        question_default: str = f"{self.prompt} [Y]es, [N]o, [A]ll, [Q]uit "
         answer: str | None = ""
         while answer not in {"y", "n", "a", "q"}:
             question_last: str = (
-                f"{prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
+                f"{self.prompt} [Y]es, [N]o, [A]ll, [Q]uit ({self.last_answer}) "
             )
             answer = (
                 input(question_last if self.last_answer else question_default)
@@ -248,72 +136,12 @@ class _InteractiveAsker:
         return answer
 
 
-_ask_to_install: partial[str] = partial(_InteractiveAsker().ask, prompt="Upgrade now?")
+_upgrade_prompter: _InteractiveAsker = _InteractiveAsker("Upgrade now?")
 
 
-@dataclasses.dataclass
-class _OutdatedPackage:
-    name: str
-    version: str
-    latest_version: str
-    latest_filetype: str
-    constraints: set[str] = dataclasses.field(default_factory=set)
-
-    @property
-    def constraints_display(self) -> str:
-        return ", ".join(sorted(self.constraints)) if self.constraints else str(None)
-
-    @classmethod
-    def from_json(cls, json_obj: dict[str, str]) -> Self:
-        return cls(
-            json_obj.get("name", "Unknown"),
-            json_obj.get("version", "Unknown"),
-            json_obj.get("latest_version", "Unknown"),
-            json_obj.get("latest_filetype", "Unknown"),
-        )
-
-
-def freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
+def _freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
     outdated_packages: str = "\n".join(f"{pkg.name}=={pkg.version}" for pkg in packages)
     file.write_text(f"{outdated_packages}\n", encoding="utf-8")
-
-
-def update_packages(
-    packages: list[_OutdatedPackage],
-    forwarded: list[str],
-    *,
-    continue_on_fail: bool,
-) -> None:
-    upgrade_cmd: list[str] = [*_PIP_CMD, "install", "-U", *forwarded]
-
-    if not continue_on_fail:
-        upgrade_cmd.extend(pkg.name for pkg in packages)
-        subprocess.call(upgrade_cmd, stdout=sys.stdout, stderr=sys.stderr)  # nosec
-    else:
-        for pkg in packages:
-            subprocess.call(
-                [*upgrade_cmd, pkg.name],
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-            )  # nosec
-
-
-def _get_outdated_packages(
-    forwarded: list[str],
-) -> list[_OutdatedPackage]:
-    command: list[str] = [
-        *_PIP_CMD,
-        "list",
-        "--outdated",
-        "--disable-pip-version-check",
-        "--format=json",
-        *forwarded,
-    ]
-    output: str = subprocess.check_output(command).decode("utf-8")  # nosec
-    packages: list[_OutdatedPackage] = [
-        _OutdatedPackage.from_json(json_obj) for json_obj in json.loads(output)
-    ]
-    return packages
 
 
 def _get_constraints_files(
@@ -398,7 +226,7 @@ def _column_width(column: list[str]) -> int:
     return max(len(cell) for cell in column if cell)
 
 
-def format_table(columns: list[list[str]]) -> str:
+def _format_table(columns: list[list[str]]) -> str:
     if any(len(columns[0]) != len(column) for column in columns[1:]):
         raise ValueError("Not all columns are the same length")
 
@@ -413,54 +241,70 @@ def format_table(columns: list[list[str]]) -> str:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args, forwarded = _parse_args(argv)
-    list_args: list[str] = _filter_forwards(forwarded, _INSTALL_ONLY)
-    install_args: list[str] = _filter_forwards(forwarded, _LIST_ONLY)
-    logger: logging.Logger = _setup_logging(verbose=args.verbose)
+    list_args: list[str] = filter_forwards(
+        forwarded,
+        exclude=INSTALL_ONLY,
+        include=LIST_ONLY,
+    )
+    install_args: list[str] = filter_forwards(
+        forwarded,
+        exclude=LIST_ONLY,
+        include=INSTALL_ONLY,
+    )
+    set_logging_level(_logger, verbose=args.verbose)
 
-    logger.debug("Forwarded arguments: %s", forwarded)
-    logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
-    logger.debug("Arguments forwarded to 'pip install': %s", install_args)
+    _logger.debug("Forwarded arguments: %s", forwarded)
+    _logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
+    _logger.debug("Arguments forwarded to 'pip install': %s", install_args)
+
+    if unrecognized_args := set(forwarded).difference(list_args, install_args):
+        formatted_unrecognized_arg: list[str] = [
+            f"'{unrecognized_arg}'" for unrecognized_arg in sorted(unrecognized_args)
+        ]
+        _logger.warning(
+            "Unrecognized arguments: %s",
+            ", ".join(formatted_unrecognized_arg),
+        )
 
     if args.raw and args.auto:
-        logger.error("'--raw' and '--auto' cannot be used together")
+        _logger.error("'--raw' and '--auto' cannot be used together")
         return 1
 
     if args.raw and args.interactive:
-        logger.error("'--raw' and '--interactive' cannot be used together")
+        _logger.error("'--raw' and '--interactive' cannot be used together")
         return 1
 
     if args.auto and args.interactive:
-        logger.error("'--auto' and '--interactive' cannot be used together")
+        _logger.error("'--auto' and '--interactive' cannot be used together")
         return 1
 
-    outdated: list[_OutdatedPackage] = _get_outdated_packages(list_args)
-    logger.debug("Outdated packages: %s", outdated)
+    outdated: list[_OutdatedPackage] = get_outdated_packages(list_args)
+    _logger.debug("Outdated packages: %s", outdated)
 
     if not outdated and not args.raw:
-        logger.info("Everything up-to-date")
+        _logger.info("Everything up-to-date")
         return 0
 
     if args.freeze_outdated_packages:
-        freeze_outdated_packages(args.freeze_file, outdated)
-        logger.debug("Wrote outdated packages to %s", args.freeze_file)
+        _freeze_outdated_packages(args.freeze_file, outdated)
+        _logger.debug("Wrote outdated packages to %s", args.freeze_file)
 
     if args.raw:
         for pkg in outdated:
-            logger.info("%s==%s", pkg.name, pkg.latest_version)
+            _logger.info("%s==%s", pkg.name, pkg.latest_version)
         return 0
 
     constraints_files: list[Path] = _get_constraints_files(install_args)
+    _logger.debug("Constraints files: %s", constraints_files)
 
     _set_constraints_of_outdated_pkgs(constraints_files, outdated)
-
-    logger.debug("Constraints files: %s", constraints_files)
-    logger.debug(
+    _logger.debug(
         "Outdated packages with new set constraints: %s",
         outdated,
     )
 
     if args.preview and (args.auto or args.interactive):
-        logger.info(format_table(_extract_table(outdated)))
+        _logger.info(_format_table(_extract_table(outdated)))
 
     if args.auto:
         update_packages(
@@ -473,7 +317,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected: list[_OutdatedPackage] = []
     for pkg in outdated:
         if pkg.constraints:
-            logger.info(
+            _logger.info(
                 "%s==%s is available (you have %s) [Constraint to %s]",
                 pkg.name,
                 pkg.latest_version,
@@ -481,7 +325,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pkg.constraints_display,
             )
         else:
-            logger.info(
+            _logger.info(
                 "%s==%s is available (you have %s)",
                 pkg.name,
                 pkg.latest_version,
@@ -489,11 +333,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
 
         if args.interactive:
-            answer: str = _ask_to_install()
+            answer: str = _upgrade_prompter.ask()
             if answer in {"y", "a"}:
                 selected.append(pkg)
 
-    logger.debug("Selected packages: %s", selected)
+    _logger.debug("Selected packages: %s", selected)
     if selected:
         update_packages(
             selected,
