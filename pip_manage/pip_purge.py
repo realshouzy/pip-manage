@@ -91,7 +91,7 @@ def _parse_args(
         help="Don't actually purge anything, just print what would be",
     )
     parser.add_argument(
-        "--freeze-packages",
+        "--freeze-purged-packages",
         action="store_true",
         default=False,
         help="Freeze all packages that will be purged",
@@ -291,7 +291,7 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
 
     packages_to_uninstall.sort()
 
-    if args.freeze_packages:
+    if args.freeze_purged_packages:
         _freeze_packages(args.freeze_file, packages_to_uninstall)
         _logger.debug("Wrote packages to %s", args.freeze_file)
 

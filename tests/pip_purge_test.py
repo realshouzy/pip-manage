@@ -61,7 +61,7 @@ def test_parse_args_empty_args() -> None:
             continue_on_fail=False,
             exclude=[],
             dry_run=False,
-            freeze_packages=False,
+            freeze_purged_packages=False,
             freeze_file=Path("backup.txt").resolve(),
         ),
         [],
@@ -81,9 +81,9 @@ def test_parse_args_empty_args() -> None:
         ),
         pytest.param(["--dry-run"], "dry_run", id="--dry-run"),
         pytest.param(
-            ["--freeze-packages"],
-            "freeze_packages",
-            id="--freeze-packages",
+            ["--freeze-purged-packages"],
+            "freeze_purged_packages",
+            id="--freeze-purged-packages",
         ),
     ],
 )
@@ -665,7 +665,12 @@ def test_main_freeze_packages(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_purge.main(
-            ["package_a", "--freeze-packages", "--freeze-file", str(test_freeze_file)],
+            [
+                "package_a",
+                "--freeze-purged-packages",
+                "--freeze-file",
+                str(test_freeze_file),
+            ],
         )
     assert caplog.record_tuples == [
         (
