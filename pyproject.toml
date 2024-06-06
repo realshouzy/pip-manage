@@ -33,7 +33,7 @@ requires-python = ">=3.8"
 dynamic = ["version", "dependencies"]
 
 [project.urls]
-repository = "https://github.com/realshouzy/pip-review"
+Source = "https://github.com/realshouzy/pip-manage"
 
 [project.optional-dependencies]
 # keep in sync with requirements-dev.txt
