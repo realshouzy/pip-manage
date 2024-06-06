@@ -82,7 +82,7 @@ def _parse_args(
         "--exclude",
         action="append",
         default=[],
-        help="Exclude package from the purge",
+        help="Exclude package from the purge (can be used multiple times)",
     )
     parser.add_argument(
         "--dry-run",
