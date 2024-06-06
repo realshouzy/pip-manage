@@ -64,7 +64,7 @@ def test_parse_args_empty_args() -> None:
             auto=False,
             continue_on_fail=False,
             freeze_outdated_packages=False,
-            freeze_file=Path("outdated.txt").resolve(),
+            freeze_file=Path("backup.txt").resolve(),
             preview=False,
         ),
         [],
