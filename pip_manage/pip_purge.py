@@ -290,6 +290,10 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
         return 0
 
     packages_to_uninstall.sort()
+    _logger.info(
+        "The following packages will be uninstalled: %s",
+        ", ".join(packages_to_uninstall),
+    )
 
     if args.freeze_purged_packages:
         _freeze_packages(args.freeze_file, packages_to_uninstall)

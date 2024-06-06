@@ -468,6 +468,12 @@ def test_main_warn_about_not_installed_packages(
         (
             "pip-purge",
             20,
+            "The following packages will be uninstalled: "
+            "package_a, package_b, package_e",
+        ),
+        (
+            "pip-purge",
+            20,
             f"Running: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
@@ -492,6 +498,12 @@ def test_main_only_package(
     ) as mock_subprocess_call:
         exit_code: int = pip_purge.main(["package_a"])
     assert caplog.record_tuples == [
+        (
+            "pip-purge",
+            20,
+            "The following packages will be uninstalled: "
+            "package_a, package_b, package_e",
+        ),
         (
             "pip-purge",
             20,
@@ -557,6 +569,12 @@ def test_main_with_uninstall_args(
         (
             "pip-purge",
             20,
+            "The following packages will be uninstalled: "
+            "package_a, package_b, package_e",
+        ),
+        (
+            "pip-purge",
+            20,
             f"Running: '{' '.join(PIP_CMD)} uninstall -y "
             "package_a package_b package_e'",
         ),
@@ -592,6 +610,12 @@ def test_main_dry_run(
         (
             "pip-purge",
             20,
+            "The following packages will be uninstalled: "
+            "package_a, package_b, package_e",
+        ),
+        (
+            "pip-purge",
+            20,
             f"Would run: '{' '.join(PIP_CMD)} uninstall package_a package_b package_e'",
         ),
     ]
@@ -619,6 +643,12 @@ def test_main_continue_on_fail(
             ["package_a", "--continue-on-fail"],
         )
     assert caplog.record_tuples == [
+        (
+            "pip-purge",
+            20,
+            "The following packages will be uninstalled: "
+            "package_a, package_b, package_e",
+        ),
         (
             "pip-purge",
             20,
@@ -674,6 +704,12 @@ def test_main_freeze_packages(
             ],
         )
     assert caplog.record_tuples == [
+        (
+            "pip-purge",
+            20,
+            "The following packages will be uninstalled: "
+            "package_a, package_b, package_e",
+        ),
         (
             "pip-purge",
             20,
