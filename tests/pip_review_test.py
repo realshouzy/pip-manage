@@ -733,7 +733,7 @@ def test_main_preview_runs_when_upgrading_without_constraints(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value="a",
     ), mock.patch(
         "os.getenv",
@@ -779,7 +779,7 @@ def test_main_preview_runs_when_upgrading_with_constraints(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value="a",
     ), mock.patch(
         "os.getenv",
@@ -819,7 +819,7 @@ def test_main_preview_does_not_run_when_not_upgrading(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value="q",
     ), mock.patch(
         "os.getenv",
@@ -844,7 +844,7 @@ def test_main_auto_continue_on_fail_set_to_false(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value="a",
     ), mock.patch(
         "os.getenv",
@@ -879,7 +879,7 @@ def test_main_auto_continue_on_fail_set_to_true(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value="a",
     ), mock.patch(
         "os.getenv",
@@ -927,7 +927,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -972,7 +972,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1028,7 +1028,7 @@ def test_main_interactive_deny_all(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1066,7 +1066,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_constra
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1115,7 +1115,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_constrai
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1175,7 +1175,7 @@ def test_main_interactive_deny_all_with_constraints_env_var(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1215,7 +1215,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1270,7 +1270,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1343,7 +1343,7 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1389,7 +1389,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1443,7 +1443,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1513,7 +1513,7 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file(
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1560,7 +1560,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_positio
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1617,7 +1617,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_position
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1692,7 +1692,7 @@ def test_main_interactive_deny_all_with_positional_arg_constraints_file_and_cons
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1740,7 +1740,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_false_with_named_a
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1796,7 +1796,7 @@ def test_main_interactive_confirm_all_continue_on_fail_set_to_true_with_named_ar
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",
@@ -1868,7 +1868,7 @@ def test_main_interactive_deny_all_with_named_arg_constraints_file_and_constrain
         "subprocess.check_output",
         return_value=sample_subprocess_output,
     ), mock.patch(
-        "pip_manage.pip_review._UPGRADE_PROMPT.ask",
+        "pip_manage.pip_review._upgrade_prompter.ask",
         return_value=user_input,
     ), mock.patch(
         "os.getenv",

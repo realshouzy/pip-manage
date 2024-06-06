@@ -133,7 +133,7 @@ class _InteractiveAsker:
         return answer
 
 
-_UPGRADE_PROMPT: Final[_InteractiveAsker] = _InteractiveAsker("Upgrade now?")
+_upgrade_prompter: _InteractiveAsker = _InteractiveAsker("Upgrade now?")
 
 
 def _freeze_outdated_packages(file: Path, packages: list[_OutdatedPackage]) -> None:
@@ -330,7 +330,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
 
         if args.interactive:
-            answer: str = _UPGRADE_PROMPT.ask()
+            answer: str = _upgrade_prompter.ask()
             if answer in {"y", "a"}:
                 selected.append(pkg)
 
