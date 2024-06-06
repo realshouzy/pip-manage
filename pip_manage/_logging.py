@@ -20,17 +20,16 @@ class _StdOutFilter(logging.Filter):
 
 def setup_logging(logger_name: str) -> logging.Logger:
     logger: logging.Logger = logging.getLogger(logger_name)
-    formatter: logging.Formatter = logging.Formatter("%(message)s")
 
     stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
     stdout_handler.set_name("stdout")
     stdout_handler.addFilter(_StdOutFilter())
-    stdout_handler.setFormatter(formatter)
+    stdout_handler.setFormatter(logging.Formatter("%(message)s"))
     stdout_handler.setLevel(logging.DEBUG)
 
     stderr_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stderr)
     stderr_handler.set_name("stderr")
-    stderr_handler.setFormatter(formatter)
+    stderr_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     stderr_handler.setLevel(logging.WARNING)
 
     logger.addHandler(stderr_handler)

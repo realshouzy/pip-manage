@@ -103,7 +103,7 @@ def test_setup_logging(logger: logging.Logger) -> None:
     stderr_handler: logging.Handler = logger.handlers[0]
     assert stderr_handler.name == "stderr"
     assert stderr_handler.level == logging.WARNING
-    assert stderr_handler.formatter._fmt == "%(message)s"  # type: ignore[union-attr]
+    assert stderr_handler.formatter._fmt == "%(levelname)s: %(message)s"  # type: ignore[union-attr]
 
     stdout_handler: logging.Handler = logger.handlers[1]
     assert stdout_handler.name == "stdout"
