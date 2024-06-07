@@ -3,16 +3,16 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = "pip-manage"
+description = "pip-manage lets you smoothly manage your installed packages."
 authors = [
   { name = "realshouzy" },
   { name = "Julian Gonggrijp", email = "j.gonggrijp@gmail.com" },
   { name = "Vincent Driessen" },
 ]
-name = "pip-manage"
-description = "pip-manage lets you smoothly manage your installed packages."
+maintainers = [{ name = "realshouzy" }]
 readme = "README.md"
 license = { text = "BSD" }
-maintainers = [{ name = "realshouzy" }]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
@@ -28,6 +28,15 @@ classifiers = [
   "License :: OSI Approved :: BSD License",
   "Operating System :: OS Independent",
   "Topic :: System :: Systems Administration",
+]
+keywords = [
+  "pip",
+  "pip-purge",
+  "pip-review",
+  "update",
+  "autoupdate",
+  "autouninstall",
+  "dependencies",
 ]
 requires-python = ">=3.8"
 dynamic = ["version", "dependencies"]
