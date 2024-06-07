@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 from unittest import mock
@@ -53,6 +54,11 @@ def test_constants(
     ),
 ) -> None:
     assert constant == expected
+
+
+def test_default_settings_pip_review_logger() -> None:
+    assert pip_review._logger.name == "pip-review"
+    assert len(pip_review._logger.handlers) == 2
 
 
 def test_parse_args_empty_args() -> None:
@@ -407,6 +413,50 @@ def test_format_table_value_error_when_columns_are_not_the_same_length() -> None
         pip_review._format_table(test_columns)
 
 
+@pytest.mark.parametrize("arg", ["--verbose", "-v"])
+def test_main_verbose_flag_sets_logger_level_to_debug(
+    sample_subprocess_output: bytes,
+    arg: str,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ), mock.patch(
+        "pip_manage.pip_review._upgrade_prompter.ask",
+        return_value="a",
+    ), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+    assert pip_review._logger.level == logging.DEBUG
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 0
+
+
+def test_main_no_verbose_flag_sets_logger_level_to_info(
+    sample_subprocess_output: bytes,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ), mock.patch(
+        "pip_manage.pip_review._upgrade_prompter.ask",
+        return_value="a",
+    ), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([])
+    assert pip_review._logger.level == logging.INFO
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 0
+
+
 @pytest.mark.parametrize(
     ("args", "err_msg"),
     [
@@ -427,22 +477,45 @@ def test_main_mutually_exclusive_args_error(
     err_msg: str,
 ) -> None:
     exit_code: int = pip_review.main(args)
-    assert ("pip-review", 40, err_msg) in caplog.record_tuples
+    assert caplog.record_tuples == [("pip-review", 40, err_msg)]
     assert exit_code == 1
 
 
-def test_main_warn_about_unrecognized_args(caplog: pytest.LogCaptureFixture) -> None:
-    with mock.patch("importlib.metadata.distribution"), mock.patch(
-        "importlib.metadata.distributions",
+def test_main_warn_about_unrecognized_args(
+    caplog: pytest.LogCaptureFixture,
+    sample_subprocess_output: bytes,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ), mock.patch(
+        "pip_manage.pip_review._upgrade_prompter.ask",
+        return_value="a",
+    ), mock.patch(
+        "os.getenv",
+        return_value=None,
     ), mock.patch(
         "subprocess.call",
-    ):
+    ) as mock_subprocess_call:
         exit_code: int = pip_review.main(["-x", "-v", "-a"])
+
     assert (
         "pip-review",
         30,
         "Unrecognized arguments: '-x'",
     ) in caplog.record_tuples
+    expected_cmd: list[str] = [
+        *PIP_CMD,
+        "install",
+        "-U",
+        "test1",
+        "test2",
+    ]
+    mock_subprocess_call.assert_called_once_with(
+        expected_cmd,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
     assert exit_code == 0
 
 
