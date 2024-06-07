@@ -4,18 +4,14 @@ Contributions are welcome and highly appreciated!
 
 ## Feature suggestions and bug reports
 
-If you have any feature suggestions or encounter any bugs, please create an [issue](https://github.com/realshouzy/pip-review/issues) in the project's repository. The case will be reviewed and if it is legitimate, you are welcome to work on addressing the issue and creating a [pull request](https://github.com/realshouzy/pip-review/pulls).
-
-## TODO
-
-Check out the [TODO](/TODO.md) file for a list of pending tasks and future improvements.
+If you have any feature suggestions or encounter any bugs, please create an [issue](https://github.com/realshouzy/pip-manage/issues) in the project's repository. The case will be reviewed and if it is legitimate, you are welcome to work on addressing the issue and creating a [pull request](https://github.com/realshouzy/pip-manage/pulls).
 
 ## Getting started
 
 To start working on this project, first, clone the repository:
 
 ```bash
-git clone https://github.com/realshouzy/pip-review.git && cd pip-review
+git clone https://github.com/realshouzy/pip-manage && cd pip-manage
 ```
 
 ### Setting up a virtual environment
@@ -23,14 +19,14 @@ git clone https://github.com/realshouzy/pip-review.git && cd pip-review
 It is highly recommended to utilize a virtual environment to develop on this project. The easiest way to set up a virtual environment is by using tox:
 
 ```bash
-tox --devenv venv
+tox devenv venv
 ```
 
 Otherwise you could also use [``virtualenv``](https://virtualenv.pypa.io/en/latest) or [``venv``](https://docs.python.org/3/library/venv.html).
 
 #### Install development dependencies (only necessary for ``virtualenv`` or ``venv``)
 
-To install all the tools, plugins and other dependencies used for development and  ``pip-manage`` as editable, run this:
+To install all the tools, plugins and other dependencies used for development and ``pip-manage`` as editable, run this:
 
 ```bash
 pip install -e .[dev]
@@ -88,6 +84,6 @@ pre-commit run --all-files
 
 </br>
 
-If any questions should arise, feel free to create an [issue](https://github.com/realshouzy/pip-review/issues) and ask for assistance.
+If any questions should arise, feel free to create an [issue](https://github.com/realshouzy/pip-manage/issues) and ask for assistance.
 
 **Thank you for understanding and your willingness to contribute to this project!**
