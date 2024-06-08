@@ -19,13 +19,13 @@
 
 To install, simply use pip:
 
-```console
+```shell
 pip install pip-manage
 ```
 
 Alternatively:
 
-```console
+```shell
 pip install git+https://github.com/realshouzy/pip-manage
 ```
 
