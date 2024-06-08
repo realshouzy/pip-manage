@@ -19,13 +19,13 @@
 
 To install, simply use pip:
 
-```shell
+```console
 pip install pip-manage
 ```
 
 Alternatively:
 
-```shell
+```console
 pip install git+https://github.com/realshouzy/pip-manage
 ```
 
@@ -45,7 +45,7 @@ deferring to `pip install`.
 
 Example, report-only:
 
-```shell
+```console
 $ pip-review
 requests==0.13.4 is available (you have 0.13.2)
 redis==2.4.13 is available (you have 2.4.9)
@@ -54,7 +54,7 @@ rq==0.3.2 is available (you have 0.3.0)
 
 You can also print raw lines:
 
-```shell
+```console
 $ pip-review --raw
 requests==0.13.4
 redis==2.4.13
@@ -63,14 +63,14 @@ rq==0.3.2
 
 Example, actually install everything:
 
-```shell
+```console
 $ pip-review --auto
 ... <pip install output>
 ```
 
 Example, run interactively, ask to upgrade for each package:
 
-```shell
+```console
 $ pip-review --interactive
 requests==0.14.0 is available (you have 0.13.2)
 Upgrade now? [Y]es, [N]o, [A]ll, [Q]uit y
@@ -85,7 +85,7 @@ Upgrade now? [Y]es, [N]o, [A]ll, [Q]uit y
 Example, preview for update target list by `pip list --outdated` format,
 with run interactively or install everything:
 
-```shell
+```console
 $ pip-review --interactive --preview
 Package  Version Latest Type
 -----------------------------
@@ -98,7 +98,7 @@ rq       0.3.0   0.3.4  wheel
 
 You can also freeze the packages that will be upgraded to a file before actually upgrading them.
 
-```shell
+```console
 $ pip-review --auto --freeze-outdated-packages
 ... <pip install output>
 ```
@@ -111,7 +111,7 @@ Note: If you want to pin specific packages to prevent them from
 automatically being upgraded, you can use a constraint file (similar to
 `requirements.txt`):
 
-```shell
+```console
 $ export PIP_CONSTRAINT="${HOME}/constraints.txt"
 $ cat $PIP_CONSTRAINT
 pyarrow==0.14.1
@@ -125,7 +125,7 @@ Set this variable in `.bashrc` or `.zshenv` to make it persistent.
 
 - Linux:
 
-```shell
+```console
 $ cat ~/.config/pip/pip.conf
 [global]
 constraint = /home/username/constraints.txt
@@ -133,7 +133,7 @@ constraint = /home/username/constraints.txt
 
 - Windows:
 
-```shell
+```console
 $ cat $HOME\AppData\Roaming\pip\pip.ini
 [global]
 constraint = '$HOME\Roaming\pip\constraints.txt'
@@ -157,7 +157,7 @@ It uses the `importlib.metadata` module to resolve the dependencies and then def
 
 Example:
 
-```shell
+```console
 $ pip-purge requests
 The following packages will be uninstalled: certifi, charset-normalizer, idna, requests, urllib3
 Running: ...
@@ -165,14 +165,14 @@ Running: ...
 
 You can also read from a requirements file. The read packages will be purged:
 
-```shell
+```console
 $ pip-purge --requirement requirements.txt
 ...
 ```
 
 If you want to exclude certain packages, you can do that as follows:
 
-```shell
+```console
 $ pip-purge requests --exclude urllib3
 The following packages will be uninstalled: certifi, charset-normalizer, idna, requests
 Running: ...
@@ -180,14 +180,14 @@ Running: ...
 
 Sometimes packages have extra / optional dependencies. These are considered by default, but can be ignored:
 
-```shell
+```console
 $ pip-purge requests --ignore-extra
 ...
 ```
 
 It's recommended to do a dry run first, which performs all operations normally but doesn't defer to `pip uninstall`:
 
-```shell
+```console
 $ pip-purge requests --dry-run
 The following packages will be uninstalled: certifi, charset-normalizer, idna, requests, urllib3
 Would run: ...
@@ -195,7 +195,7 @@ Would run: ...
 
 You can also freeze the packages that will be uninstalled to a file before actually purging them.
 
-```shell
+```console
 $ pip-review requests --freeze-purged-packages
 ...
 ```
