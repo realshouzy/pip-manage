@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 import pytest
 
@@ -143,8 +144,13 @@ def test_colored_formatter_format(level: int, prefix: str) -> None:
         pytest.param(False, logging.INFO, id="non_verbose"),
     ],
 )
-def test_setup_logging(verbose: bool, level: int) -> None:  # noqa: FBT001
-    setup_logging("test", verbose=verbose)
+@pytest.mark.parametrize("name", ["pip-review", "pip-purge"])
+def test_setup_logging(
+    name: Literal["pip-review", "pip-purge"],
+    verbose: bool,  # noqa: FBT001
+    level: int,
+) -> None:
+    setup_logging(name, verbose=verbose)
     root_logger: logging.Logger = logging.getLogger()
     assert root_logger.level == logging.DEBUG
     assert len(root_logger.handlers) == 2
@@ -164,7 +170,7 @@ def test_setup_logging(verbose: bool, level: int) -> None:  # noqa: FBT001
     assert stderr_handler.formatter._fmt == "%(message)s"
     assert not stderr_handler.filters
 
-    test_logger: logging.Logger = logging.getLogger("test")
+    test_logger: logging.Logger = logging.getLogger(name)
     assert test_logger.level == level
     assert test_logger.propagate
     assert not test_logger.handlers
