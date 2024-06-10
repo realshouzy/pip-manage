@@ -36,7 +36,11 @@ class _ColoredFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging(logger_name: str, *, verbose: bool) -> None:
+def setup_logging(
+    logger_name: Literal["pip-review", "pip-purge"],
+    *,
+    verbose: bool,
+) -> None:
     level: Literal["DEBUG", "INFO"] = "DEBUG" if verbose else "INFO"
     logging.config.dictConfig(
         {

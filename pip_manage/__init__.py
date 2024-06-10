@@ -3,6 +3,6 @@
 from __future__ import annotations
 
 __version__: Final[str] = "1.0.3"
-__title__: Final[str] = "pip-manage"
+__title__: Literal["pip-manage"] = "pip-manage"
 
-from typing import Final
+from typing import Final, Literal

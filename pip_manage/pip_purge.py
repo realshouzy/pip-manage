@@ -2,13 +2,13 @@
 """pip-purge lets you smoothly uninstall packages and their dependencies."""
 from __future__ import annotations
 
-__title__: Final[str] = "pip-purge"
+__title__: Literal["pip-purge"] = "pip-purge"
 
 import argparse
 import importlib.metadata
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, NamedTuple
+from typing import TYPE_CHECKING, Final, Literal, NamedTuple
 
 from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (

@@ -2,13 +2,13 @@
 """pip-review lets you smoothly manage all available PyPI updates."""
 from __future__ import annotations
 
-__title__: Final[str] = "pip-review"
+__title__: Literal["pip-review"] = "pip-review"
 
 import argparse
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, NamedTuple
+from typing import TYPE_CHECKING, Final, Literal, NamedTuple
 
 from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
