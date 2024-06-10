@@ -158,6 +158,7 @@ def _get_dependencies_of_package(
     *,
     ignore_extra: bool,
 ) -> _DependencyInfo:
+    assert _is_installed(package)
     dependencies: frozenset[str] = _parse_requirements(
         importlib.metadata.distribution(package).requires,
         ignore_extra=ignore_extra,
@@ -175,6 +176,7 @@ def _read_from_requirements(requirement_files: list[Path]) -> list[str]:
 
 
 def _freeze_packages(file: Path, packages: list[str]) -> None:
+    assert all(_is_installed(package) for package in packages)
     frozen_packages: str = "\n".join(
         f"{package}=={importlib.metadata.distribution(package).version}"
         for package in packages

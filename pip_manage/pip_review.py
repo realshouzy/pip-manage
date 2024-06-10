@@ -225,12 +225,10 @@ def _column_width(column: list[str]) -> int:
 
 
 def _format_table(columns: list[list[str]]) -> str:
-    if any(len(columns[0]) != len(column) for column in columns[1:]):
-        raise ValueError("Not all columns are the same length")
-
     widths: list[int] = [_column_width(column) for column in columns]
     row_fmt: Callable[..., str] = " ".join(f"{{:<{width}}}" for width in widths).format
     ruler: str = "-" * (sum(widths) + len(widths) - 1)
+    assert all(len(columns[0]) == len(column) for column in columns[1:])
     rows: list[str] = [row_fmt(*row) for row in zip(*columns)]
     head: str = rows[0]
     body: list[str] = rows[1:]

@@ -129,6 +129,7 @@ lint.ignore = [
   "TD002",
   "TD003",
   "TRY400",
+  "S101",
 ]
 lint.fixable = ["ALL"]
 lint.unfixable = []
@@ -163,6 +164,7 @@ disable = [
 load-plugins = "pylint_pytest"
 
 [tool.bandit]
+skips = ["B101"]
 exclude_dirs = ["tests"]
 
 [tool.pytest.ini_options]

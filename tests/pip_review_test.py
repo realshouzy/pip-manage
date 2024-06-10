@@ -400,18 +400,6 @@ def test_format_table() -> None:
     assert pip_review._format_table(test_columns) == expected_result
 
 
-def test_format_table_value_error_when_columns_are_not_the_same_length() -> None:
-    test_columns: list[list[str]] = [
-        ["Package", "test1", "test2"],
-        ["Version", "1.0.0", "1.9.9"],
-        ["Latest", "1.1.0", "2.0.0"],
-        ["Type", "wheel"],
-        ["Constraints", "None", "1.1.0"],
-    ]
-    with pytest.raises(ValueError, match=r"\bNot all columns are the same length\b"):
-        pip_review._format_table(test_columns)
-
-
 @pytest.mark.parametrize("arg", ["--verbose", "-v"])
 def test_main_verbose_flag_sets_logger_level_to_debug(
     sample_subprocess_output: bytes,
