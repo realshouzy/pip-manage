@@ -1,15 +1,44 @@
 from __future__ import annotations
 
+import logging
+import logging.config
+from functools import wraps
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
+from typing import Callable, ParamSpec, TypeVar
 
 import pytest
 
-from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import _OutdatedPackage
 
-if TYPE_CHECKING:
-    import logging
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+# https://github.com/pytest-dev/pytest/discussions/11618
+def retain_pytest_handlers(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    @wraps(f)
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        pytest_handlers: list[logging.Handler] = [
+            handler
+            for handler in logging.root.handlers
+            if handler.__module__ == "_pytest.logging"
+        ]
+        ret: _R = f(*args, **kwargs)
+        for handler in pytest_handlers:
+            if handler not in logging.root.handlers:
+                logging.root.addHandler(handler)
+        return ret
+
+    return wrapper
+
+
+@pytest.fixture(autouse=True)
+def _keep_pytest_handlers_during_dict_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        logging.config,
+        "dictConfig",
+        retain_pytest_handlers(logging.config.dictConfig),
+    )
 
 
 @pytest.fixture()
@@ -27,11 +56,6 @@ def sample_subprocess_output() -> bytes:
         b'[{"name": "test1", "version": "1.0.0", "latest_version": "1.1.0", "latest_filetype": "wheel"}, '  # noqa: E501
         b'{"name": "test2", "version": "1.9.9", "latest_version": "2.0.0", "latest_filetype": "wheel"}]\r\n'  # noqa: E501
     )
-
-
-@pytest.fixture(scope="session")
-def logger() -> logging.Logger:
-    return setup_logging("test")
 
 
 @pytest.fixture()

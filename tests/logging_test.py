@@ -5,16 +5,15 @@ import logging
 
 import pytest
 
-from pip_manage._logging import _StdOutFilter, set_logging_level
-from tests.fixtures import logger  # pylint: disable=W0611
+from pip_manage._logging import _ColoredFormatter, _NonErrorFilter, setup_logging
 
 
 def test_stdout_filter_is_subclass_of_logging_filter() -> None:
-    assert issubclass(_StdOutFilter, logging.Filter)
+    assert issubclass(_NonErrorFilter, logging.Filter)
 
 
 def test_stdout_filter_override() -> None:
-    assert _StdOutFilter().filter.__override__
+    assert getattr(_NonErrorFilter().filter, "__override__", False)
 
 
 @pytest.mark.parametrize(
@@ -28,7 +27,7 @@ def test_stdout_filter_override() -> None:
                 0,
                 "test",
                 None,
-                (None, None, None),
+                None,
             ),
             id="DEBUG",
         ),
@@ -40,14 +39,14 @@ def test_stdout_filter_override() -> None:
                 0,
                 "test",
                 None,
-                (None, None, None),
+                None,
             ),
             id="INFO",
         ),
     ],
 )
 def test_stdout_filter_passes(record: logging.LogRecord) -> None:
-    assert _StdOutFilter().filter(record)
+    assert _NonErrorFilter().filter(record)
 
 
 @pytest.mark.parametrize(
@@ -61,7 +60,7 @@ def test_stdout_filter_passes(record: logging.LogRecord) -> None:
                 0,
                 "test",
                 None,
-                (None, None, None),
+                None,
             ),
             id="WARNING",
         ),
@@ -73,7 +72,7 @@ def test_stdout_filter_passes(record: logging.LogRecord) -> None:
                 0,
                 "test",
                 None,
-                (None, None, None),
+                None,
             ),
             id="ERROR",
         ),
@@ -85,50 +84,91 @@ def test_stdout_filter_passes(record: logging.LogRecord) -> None:
                 0,
                 "test",
                 None,
-                (None, None, None),
+                None,
             ),
             id="CRITICAL",
         ),
     ],
 )
 def test_stdout_filter_no_passes(record: logging.LogRecord) -> None:
-    assert not _StdOutFilter().filter(record)
+    assert not _NonErrorFilter().filter(record)
 
 
-def test_setup_logging(logger: logging.Logger) -> None:
-    assert logger.name == "test"
-    assert logger.level == logging.NOTSET
-    assert len(logger.handlers) == 2
+def test_colored_formatter_is_subclass_of_logging_formatter() -> None:
+    assert issubclass(_ColoredFormatter, logging.Formatter)
 
-    stderr_handler: logging.Handler = logger.handlers[0]
-    assert stderr_handler.name == "stderr"
-    assert stderr_handler.level == logging.WARNING
-    assert stderr_handler.formatter._fmt == "%(levelname)s: %(message)s"  # type: ignore[union-attr]
 
-    stdout_handler: logging.Handler = logger.handlers[1]
-    assert stdout_handler.name == "stdout"
-    assert stdout_handler.level == logging.DEBUG
-    assert stdout_handler.formatter._fmt == "%(message)s"  # type: ignore[union-attr]
-    assert len(stdout_handler.filters) == 1
-    assert isinstance(stdout_handler.filters[0], _StdOutFilter)
+def test_colored_formatter_override() -> None:
+    assert getattr(_ColoredFormatter().format, "__override__", False)
 
-    logger.handlers.clear()
+
+def test_colored_formatter_class_vars() -> None:
+    assert {
+        "DEBUG": "\x1b[0;37m",
+        "INFO": "\x1b[0;32m",
+        "WARNING": "\x1b[0;33m",
+        "ERROR": "\x1b[0;31m",
+        "CRITICAL": "\x1b[1;31m",
+    } == _ColoredFormatter.COLORS
+    assert _ColoredFormatter.RESET == "\x1b[0m"
 
 
 @pytest.mark.parametrize(
-    ("verbose", "logger_level"),
+    ("level", "prefix"),
+    [
+        (logging.DEBUG, "\x1b[0;37mDEBUG"),
+        (logging.INFO, "\x1b[0;32mINFO"),
+        (logging.WARNING, "\x1b[0;33mWARNING"),
+        (logging.ERROR, "\x1b[0;31mERROR"),
+        (logging.CRITICAL, "\x1b[1;31mCRITICAL"),
+    ],
+)
+def test_colored_formatter_format(level: int, prefix: str) -> None:
+    test_record: logging.LogRecord = logging.LogRecord(
+        "test",
+        level,
+        "test",
+        0,
+        "test",
+        None,
+        None,
+    )
+    assert _ColoredFormatter().format(test_record) == f"{prefix}: test\x1b[0m"
+
+
+@pytest.mark.parametrize(
+    ("verbose", "level"),
     [
         pytest.param(True, logging.DEBUG, id="verbose"),
         pytest.param(False, logging.INFO, id="non_verbose"),
     ],
 )
-def test_set_logging_level(
-    logger: logging.Logger,
-    verbose: bool,  # noqa: FBT001
-    logger_level: int,
-) -> None:
-    set_logging_level(logger, verbose=verbose)
-    assert logger.level == logger_level
+def test_setup_logging(verbose: bool, level: int) -> None:  # noqa: FBT001
+    setup_logging("test", verbose=verbose)
+    root_logger: logging.Logger = logging.getLogger()
+    assert root_logger.level == logging.DEBUG
+    assert len(root_logger.handlers) == 2
+
+    stdout_handler: logging.Handler = root_logger.handlers[0]
+    assert stdout_handler.name == "stdout"
+    assert stdout_handler.level == logging.DEBUG
+    assert isinstance(stdout_handler.formatter, logging.Formatter)
+    assert stdout_handler.formatter._fmt == "%(message)s"
+    assert len(stdout_handler.filters) == 1
+    assert isinstance(stdout_handler.filters[0], _NonErrorFilter)
+
+    stderr_handler: logging.Handler = root_logger.handlers[1]
+    assert stderr_handler.name == "stderr"
+    assert stderr_handler.level == logging.WARNING
+    assert isinstance(stderr_handler.formatter, _ColoredFormatter)
+    assert stderr_handler.formatter._fmt == "%(message)s"
+    assert not stderr_handler.filters
+
+    test_logger: logging.Logger = logging.getLogger("test")
+    assert test_logger.level == level
+    assert test_logger.propagate
+    assert not test_logger.handlers
+    assert not test_logger.filters
 
 
 if __name__ == "__main__":
