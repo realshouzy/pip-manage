@@ -21,7 +21,7 @@ _R = TypeVar("_R")
 
 
 # https://github.com/pytest-dev/pytest/discussions/11618
-def retain_pytest_handlers(f: Callable[_P, _R]) -> Callable[_P, _R]:
+def _retain_pytest_handlers(f: Callable[_P, _R]) -> Callable[_P, _R]:
     @wraps(f)
     def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         pytest_handlers: list[logging.Handler] = [
@@ -43,7 +43,7 @@ def _keep_pytest_handlers_during_dict_config(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(
         logging.config,
         "dictConfig",
-        retain_pytest_handlers(logging.config.dictConfig),
+        _retain_pytest_handlers(logging.config.dictConfig),
     )
 
 
