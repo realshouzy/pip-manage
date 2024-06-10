@@ -13,7 +13,12 @@ import pytest
 
 from pip_manage import pip_purge
 from pip_manage._pip_interface import PIP_CMD
-from tests.fixtures import dummy_dependencies  # pylint: disable=W0611
+from tests.fixtures import (  # pylint: disable=W0611
+    _keep_pytest_handlers_during_dict_config,
+    dummy_dependencies,
+)
+
+# pylint: disable=C0302
 
 
 def _raise_package_not_found_error_when_package_c(package: str) -> None:
@@ -50,11 +55,6 @@ def test_constants(
     expected: str | frozenset[str] | tuple[str, ...],
 ) -> None:
     assert constant == expected
-
-
-def test_default_settings_pip_purge_logger() -> None:
-    assert pip_purge._logger.name == "pip-purge"
-    assert len(pip_purge._logger.handlers) == 2
 
 
 def test_parse_args_empty_args() -> None:
@@ -428,7 +428,7 @@ def test_main_verbose_flag_sets_logger_level_to_debug(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_purge.main(["package_a", arg])
-    assert pip_purge._logger.level == logging.DEBUG
+    assert logging.getLogger("pip-purge").level == logging.DEBUG
     mock_subprocess_call.assert_called_once_with(
         [*PIP_CMD, "uninstall", "package_a", "package_b", "package_e"],
         stdout=sys.stdout,
@@ -453,7 +453,7 @@ def test_main_no_verbose_flag_sets_logger_level_to_info(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_purge.main(["package_a"])
-    assert pip_purge._logger.level == logging.INFO
+    assert logging.getLogger("pip-purge").level == logging.INFO
     mock_subprocess_call.assert_called_once_with(
         [*PIP_CMD, "uninstall", "package_a", "package_b", "package_e"],
         stdout=sys.stdout,
@@ -473,7 +473,14 @@ def test_main_error_exit_when_no_packages_provided(
         "subprocess.call",
     ) as mock_subprocess_call:
         exit_code: int = pip_purge.main([])
-    assert caplog.record_tuples == [("pip-purge", 40, "No packages provided")]
+    assert caplog.record_tuples == [
+        (
+            "pip-purge",
+            40,
+            "\x1b[0;31mERROR: You must give at least one requirement to "
+            "uninstall\x1b[0m",
+        ),
+    ]
     mock_subprocess_call.assert_not_called()
     assert exit_code == 1
 
@@ -492,9 +499,14 @@ def test_main_warn_about_unrecognized_args_before_error_exit_when_no_packages_pr
     assert (
         "pip-purge",
         30,
-        "Unrecognized arguments: '-a', '-b'",
+        "\x1b[0;33mWARNING: Unrecognized arguments: '-a', '-b'\x1b[0m",
     ) in caplog.record_tuples
-    assert ("pip-purge", 40, "No packages provided") in caplog.record_tuples
+    assert (
+        "pip-purge",
+        40,
+        "\x1b[0;31mERROR: You must give at least one requirement to "
+        "uninstall\x1b[0m",
+    ) in caplog.record_tuples
     mock_subprocess_call.assert_not_called()
     assert exit_code == 1
 
@@ -519,7 +531,7 @@ def test_main_warn_about_unrecognized_args(
     assert (
         "pip-purge",
         30,
-        "Unrecognized arguments: '-a', '-b'",
+        "\x1b[0;33mWARNING: Unrecognized arguments: '-a', '-b'\x1b[0m",
     ) in caplog.record_tuples
     mock_subprocess_call.assert_called_once_with(
         [*PIP_CMD, "uninstall", "-y", "package_a", "package_b", "package_e"],
@@ -547,7 +559,11 @@ def test_main_warn_about_not_installed_packages(
     ):
         exit_code: int = pip_purge.main(["package_a", "package_x"])
     assert caplog.record_tuples == [
-        ("pip-purge", 30, "package_x is not installed"),
+        (
+            "pip-purge",
+            30,
+            "\x1b[0;33mWARNING: Skipping package_x as it is not installed\x1b[0m",
+        ),
         (
             "pip-purge",
             20,
@@ -769,7 +785,7 @@ def test_main_freeze_packages(
     arg: str,
 ) -> None:
     test_freeze_file: Path = tmp_path / "freeze.txt"
-    test_freeze_file.touch()
+
     with mock.patch(
         "importlib.metadata.distribution",
         side_effect=lambda package: _custom_importlib_metadata_distribution(
@@ -813,6 +829,51 @@ def test_main_freeze_packages(
         stderr=sys.stderr,
     )
     assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--freeze-file", "-f"])
+def test_main_freeze_packages_fail(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    dummy_dependencies: list[SimpleNamespace],
+    arg: str,
+) -> None:
+    test_freeze_file: Path = tmp_path / "freeze.txt"
+    test_freeze_file.touch(0o000)
+    with mock.patch(
+        "importlib.metadata.distribution",
+        side_effect=lambda package: _custom_importlib_metadata_distribution(
+            package,
+            dummy_dependencies,
+        ),
+    ), mock.patch(
+        "importlib.metadata.distributions",
+        return_value=dummy_dependencies,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_purge.main(
+            [
+                "package_a",
+                "--freeze-purged-packages",
+                arg,
+                str(test_freeze_file),
+            ],
+        )
+    assert len(caplog.record_tuples) == 2
+    assert caplog.record_tuples[0] == (
+        "pip-purge",
+        20,
+        "The following packages will be uninstalled: "
+        "package_a, package_b, package_e",
+    )
+    assert caplog.record_tuples[1][0] == "pip-purge"
+    assert caplog.record_tuples[1][1] == 40
+    assert caplog.record_tuples[1][2].startswith("\x1b[0;31mERROR: ")
+    assert caplog.record_tuples[1][2].endswith("\x1b[0m")
+    assert "Could not open requirements file:" in caplog.record_tuples[1][2]
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 1
 
 
 def test_main_double_check(
@@ -914,6 +975,38 @@ def test_main_requirement(
         stderr=sys.stderr,
     )
     assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--requirement", "-r"])
+def test_main_requirement_fail(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    dummy_dependencies: list[SimpleNamespace],
+    arg: str,
+) -> None:
+    test_requirement_file: Path = tmp_path / "requirement.txt"
+    with mock.patch(
+        "importlib.metadata.distribution",
+    ), mock.patch(
+        "importlib.metadata.distributions",
+        return_value=dummy_dependencies,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_purge.main(
+            [
+                arg,
+                str(test_requirement_file),
+            ],
+        )
+    assert len(caplog.record_tuples) == 1
+    assert caplog.record_tuples[0][0] == "pip-purge"
+    assert caplog.record_tuples[0][1] == 40
+    assert caplog.record_tuples[0][2].startswith("\x1b[0;31mERROR: ")
+    assert caplog.record_tuples[0][2].endswith("\x1b[0m")
+    assert "Could not open requirements file:" in caplog.record_tuples[0][2]
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 1
 
 
 if __name__ == "__main__":

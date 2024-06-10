@@ -5,11 +5,12 @@ from __future__ import annotations
 __title__: Final[str] = "pip-review"
 
 import argparse
+import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
-from pip_manage._logging import set_logging_level, setup_logging
+from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
     INSTALL_ONLY,
     LIST_ONLY,
@@ -19,7 +20,6 @@ from pip_manage._pip_interface import (
 )
 
 if TYPE_CHECKING:
-    import logging
     from collections.abc import Callable, Sequence
 
     from pip_manage._pip_interface import _OutdatedPackage
@@ -33,8 +33,6 @@ and '--timeout' and they will do what you expect. See 'pip list -h' and 'pip ins
 for a full overview of the options.
 """
 )
-
-_logger: logging.Logger = setup_logging(__title__)
 
 
 def _parse_args(
@@ -239,7 +237,9 @@ def _format_table(columns: list[list[str]]) -> str:
     return "\n".join([head, ruler, *body, ruler])
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(  # pylint: disable=R0915  # noqa: PLR0915
+    argv: Sequence[str] | None = None,
+) -> int:
     args, forwarded = _parse_args(argv)
     list_args: list[str] = filter_forwards(
         forwarded,
@@ -251,60 +251,68 @@ def main(argv: Sequence[str] | None = None) -> int:
         exclude=LIST_ONLY,
         include=INSTALL_ONLY,
     )
-    set_logging_level(_logger, verbose=args.verbose)
+    setup_logging(__title__, verbose=args.verbose)
+    logger: logging.Logger = logging.getLogger(__title__)
 
-    _logger.debug("Forwarded arguments: %s", forwarded)
-    _logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
-    _logger.debug("Arguments forwarded to 'pip install': %s", install_args)
+    logger.debug("Forwarded arguments: %s", forwarded)
+    logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
+    logger.debug("Arguments forwarded to 'pip install': %s", install_args)
 
     if unrecognized_args := set(forwarded).difference(list_args, install_args):
         formatted_unrecognized_arg: list[str] = [
             f"'{unrecognized_arg}'" for unrecognized_arg in sorted(unrecognized_args)
         ]
-        _logger.warning(
+        logger.warning(
             "Unrecognized arguments: %s",
             ", ".join(formatted_unrecognized_arg),
         )
 
     if args.raw and args.auto:
-        _logger.error("'--raw' and '--auto' cannot be used together")
+        logger.error("'--raw' and '--auto' cannot be used together")
         return 1
 
     if args.raw and args.interactive:
-        _logger.error("'--raw' and '--interactive' cannot be used together")
+        logger.error("'--raw' and '--interactive' cannot be used together")
         return 1
 
     if args.auto and args.interactive:
-        _logger.error("'--auto' and '--interactive' cannot be used together")
+        logger.error("'--auto' and '--interactive' cannot be used together")
         return 1
 
     outdated: list[_OutdatedPackage] = get_outdated_packages(list_args)
-    _logger.debug("Outdated packages: %s", outdated)
+    logger.debug("Outdated packages: %s", outdated)
 
     if not outdated and not args.raw:
-        _logger.info("Everything up-to-date")
+        logger.info("Everything up-to-date")
         return 0
 
     if args.freeze_outdated_packages:
-        _freeze_outdated_packages(args.freeze_file, outdated)
-        _logger.debug("Wrote outdated packages to %s", args.freeze_file)
+        try:
+            _freeze_outdated_packages(args.freeze_file, outdated)
+        except OSError as err:
+            logger.error("Could not open requirements file: %s", err)
+            return 1
+        logger.debug("Wrote outdated packages to %s", args.freeze_file)
 
     if args.raw:
         for pkg in outdated:
-            _logger.info("%s==%s", pkg.name, pkg.latest_version)
+            logger.info("%s==%s", pkg.name, pkg.latest_version)
         return 0
 
     constraints_files: list[Path] = _get_constraints_files(install_args)
-    _logger.debug("Constraints files: %s", constraints_files)
-
-    _set_constraints_of_outdated_pkgs(constraints_files, outdated)
-    _logger.debug(
+    logger.debug("Constraints files: %s", constraints_files)
+    try:
+        _set_constraints_of_outdated_pkgs(constraints_files, outdated)
+    except OSError as err:
+        logger.error("Could not open requirements file: %s", err)
+        return 1
+    logger.debug(
         "Outdated packages with new set constraints: %s",
         outdated,
     )
 
     if args.preview and (args.auto or args.interactive):
-        _logger.info(_format_table(_extract_table(outdated)))
+        logger.info(_format_table(_extract_table(outdated)))
 
     if args.auto:
         update_packages(
@@ -317,7 +325,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected: list[_OutdatedPackage] = []
     for pkg in outdated:
         if pkg.constraints:
-            _logger.info(
+            logger.info(
                 "%s==%s is available (you have %s) [Constraint to %s]",
                 pkg.name,
                 pkg.latest_version,
@@ -325,7 +333,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 pkg.constraints_display,
             )
         else:
-            _logger.info(
+            logger.info(
                 "%s==%s is available (you have %s)",
                 pkg.name,
                 pkg.latest_version,
@@ -337,7 +345,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if answer in {"y", "a"}:
                 selected.append(pkg)
 
-    _logger.debug("Selected packages: %s", selected)
+    logger.debug("Selected packages: %s", selected)
     if selected:
         update_packages(
             selected,
