@@ -11,9 +11,9 @@ import pytest
 
 from pip_manage._pip_interface import _OutdatedPackage
 
-if sys.version_info >= (3, 10):  # pragma: >=3.12 cover
+if sys.version_info >= (3, 10):  # pragma: >=3.10 cover
     from typing import ParamSpec
-else:  # pragma: <3.12 cover
+else:  # pragma: <3.10 cover
     from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")
