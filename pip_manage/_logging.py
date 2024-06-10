@@ -13,7 +13,7 @@ else:  # pragma: <3.12 cover
     from typing_extensions import override
 
 
-class _StdOutFilter(logging.Filter):
+class _NonErrorFilter(logging.Filter):
     @override
     def filter(self, record: logging.LogRecord) -> bool:
         return record.levelno <= logging.INFO
@@ -21,13 +21,13 @@ class _StdOutFilter(logging.Filter):
 
 class _ColoredFormatter(logging.Formatter):
     COLORS: ClassVar[dict[str, str]] = {
-        "DEBUG": "\033[0;37m",
-        "INFO": "\033[0;32m",
-        "WARNING": "\033[0;33m",
-        "ERROR": "\033[0;31m",
-        "CRITICAL": "\033[1;31m",
+        "DEBUG": "\x1b[0;37m",
+        "INFO": "\x1b[0;32m",
+        "WARNING": "\x1b[0;33m",
+        "ERROR": "\x1b[0;31m",
+        "CRITICAL": "\x1b[1;31m",
     }
-    RESET: ClassVar[Literal["\033[0m"]] = "\033[0m"
+    RESET: ClassVar[Literal["\x1b[0m"]] = "\x1b[0m"
 
     @override
     def format(self, record: logging.LogRecord) -> str:
@@ -36,7 +36,7 @@ class _ColoredFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging(*, verbose: bool) -> None:
+def setup_logging(logger_name: str, *, verbose: bool) -> None:
     level: Literal["DEBUG", "INFO"] = "DEBUG" if verbose else "INFO"
     logging.config.dictConfig(
         {
@@ -52,7 +52,7 @@ def setup_logging(*, verbose: bool) -> None:
             },
             "filters": {
                 "StdOutFilter": {
-                    "()": _StdOutFilter,
+                    "()": _NonErrorFilter,
                 },
             },
             "handlers": {
@@ -71,11 +71,11 @@ def setup_logging(*, verbose: bool) -> None:
                 },
             },
             "loggers": {
-                "root": {
-                    "level": level,
+                "": {
+                    "level": "DEBUG",
                     "handlers": ["stdout", "stderr"],
-                    "propagate": True,
                 },
+                logger_name: {"level": level, "propagate": True},
             },
         },
     )

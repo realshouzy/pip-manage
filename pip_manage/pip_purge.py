@@ -29,8 +29,6 @@ they will do what you expect. See 'pip uninstall -h' for a full overview of the 
 """
 )
 
-_logger: logging.Logger = logging.getLogger(__title__)
-
 
 def _parse_args(
     args: Sequence[str] | None = None,
@@ -189,49 +187,50 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
 ) -> int:
     args, forwarded = _parse_args(argv)
     uninstall_args: list[str] = filter_forwards_include(forwarded, UNINSTALL_ONLY)
-    setup_logging(verbose=args.verbose)
+    setup_logging(__title__, verbose=args.verbose)
+    logger: logging.Logger = logging.getLogger(__title__)
 
-    _logger.debug("Forwarded arguments: %s", forwarded)
-    _logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
+    logger.debug("Forwarded arguments: %s", forwarded)
+    logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
     if unrecognized_args := set(forwarded).difference(uninstall_args):
         formatted_unrecognized_arg: list[str] = [
             f"'{unrecognized_arg}'" for unrecognized_arg in sorted(unrecognized_args)
         ]
-        _logger.warning(
+        logger.warning(
             "Unrecognized arguments: %s",
             ", ".join(formatted_unrecognized_arg),
         )
     try:
         requirements: list[str] = _read_from_requirements(args.requirements)
     except OSError as err:
-        _logger.error("Could not open requirements file: %s", err)
+        logger.error("Could not open requirements file: %s", err)
         return 1
 
     if not (packages := [*args.packages, *requirements]):
-        _logger.error("You must give at least one requirement to uninstall")
+        logger.error("You must give at least one requirement to uninstall")
         return 1
 
     package_dependencies: dict[str, _DependencyInfo] = {}
     for package in packages:
         if not _is_installed(package):
-            _logger.warning("Skipping %s as it is not installed", package)
+            logger.warning("Skipping %s as it is not installed", package)
             continue
 
         if package in args.exclude:
-            _logger.debug("Skipping %s", package)
+            logger.debug("Skipping %s", package)
             continue
 
         package_dependencies[package] = dependency_info = _get_dependencies_of_package(
             package,
             ignore_extra=args.ignore_extra,
         )
-        _logger.debug(
+        logger.debug(
             "%s requires: %s",
             package,
             dependency_info.dependencies,
         )
-        _logger.debug(
+        logger.debug(
             "%s is required by: %s",
             package,
             dependency_info.dependents,
@@ -245,12 +244,12 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
                 dependent_package,
                 ignore_extra=args.ignore_extra,
             )
-            _logger.debug(
+            logger.debug(
                 "%s requires: %s",
                 dependent_package,
                 dependent_package_dependency_info.dependencies,
             )
-            _logger.debug(
+            logger.debug(
                 "%s is required by: %s",
                 dependent_package,
                 dependent_package_dependency_info.dependents,
@@ -261,11 +260,11 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     # If a package has dependents that are NOT supposed to also by uninstalled,
     # it removes the package from package_dependencies.
     for package_name, dependency_info in package_dependencies.copy().items():
-        _logger.debug("Checking %s", package_name)
+        logger.debug("Checking %s", package_name)
         if dependency_info.dependents and not all(
             package in package_dependencies for package in dependency_info.dependents
         ):
-            _logger.info(
+            logger.info(
                 "Cannot uninstall %s, required by: %s",
                 package_name,
                 ", ".join(dependency_info.dependents.difference(package_dependencies)),
@@ -277,27 +276,27 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     # are also reconsidered.
     packages_to_uninstall: list[str] = []
     for package_name, dependency_info in package_dependencies.items():
-        _logger.debug("Checking %s again", package_name)
+        logger.debug("Checking %s again", package_name)
         if not dependency_info.dependents or all(
             package in package_dependencies for package in dependency_info.dependents
         ):
             packages_to_uninstall.append(package_name)
-            _logger.debug("%s will be uninstalled", package_name)
+            logger.debug("%s will be uninstalled", package_name)
         else:
-            _logger.info(
+            logger.info(
                 "Cannot uninstall %s, required by: %s",
                 package_name,
                 ", ".join(dependency_info.dependents.difference(package_dependencies)),
             )
 
-    _logger.debug("Finished checking packages")
+    logger.debug("Finished checking packages")
 
     if not packages_to_uninstall:
-        _logger.info("No packages to purge")
+        logger.info("No packages to purge")
         return 0
 
     packages_to_uninstall.sort()
-    _logger.info(
+    logger.info(
         "The following packages will be uninstalled: %s",
         ", ".join(packages_to_uninstall),
     )
@@ -306,9 +305,9 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
         try:
             _freeze_packages(args.freeze_file, packages_to_uninstall)
         except OSError as err:
-            _logger.error("Could not open requirements file: %s", err)
+            logger.error("Could not open requirements file: %s", err)
             return 1
-        _logger.debug("Wrote packages to %s", args.freeze_file)
+        logger.debug("Wrote packages to %s", args.freeze_file)
 
     joined_pip_cmd: str = " ".join(PIP_CMD)
     joined_uninstall_args: str = " ".join(uninstall_args)
@@ -322,7 +321,7 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
             f"{running}: '{joined_pip_cmd} uninstall {joined_uninstall_args} "
             f"{joined_packages_to_uninstall}'"
         )
-    _logger.info(msg)
+    logger.info(msg)
 
     if not args.dry_run:
         uninstall_packages(
