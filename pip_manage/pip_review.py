@@ -5,11 +5,12 @@ from __future__ import annotations
 __title__: Final[str] = "pip-review"
 
 import argparse
+import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
-from pip_manage._logging import set_logging_level, setup_logging
+from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
     INSTALL_ONLY,
     LIST_ONLY,
@@ -19,7 +20,6 @@ from pip_manage._pip_interface import (
 )
 
 if TYPE_CHECKING:
-    import logging
     from collections.abc import Callable, Sequence
 
     from pip_manage._pip_interface import _OutdatedPackage
@@ -34,7 +34,7 @@ for a full overview of the options.
 """
 )
 
-_logger: logging.Logger = setup_logging(__title__)
+_logger: logging.Logger = logging.getLogger(__title__)
 
 
 def _parse_args(
@@ -239,7 +239,9 @@ def _format_table(columns: list[list[str]]) -> str:
     return "\n".join([head, ruler, *body, ruler])
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(  # pylint: disable=R0915  # noqa: PLR0915
+    argv: Sequence[str] | None = None,
+) -> int:
     args, forwarded = _parse_args(argv)
     list_args: list[str] = filter_forwards(
         forwarded,
@@ -251,7 +253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         exclude=LIST_ONLY,
         include=INSTALL_ONLY,
     )
-    set_logging_level(_logger, verbose=args.verbose)
+    setup_logging(verbose=args.verbose)
 
     _logger.debug("Forwarded arguments: %s", forwarded)
     _logger.debug("Arguments forwarded to 'pip list --outdated': %s", list_args)
@@ -286,7 +288,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.freeze_outdated_packages:
-        _freeze_outdated_packages(args.freeze_file, outdated)
+        try:
+            _freeze_outdated_packages(args.freeze_file, outdated)
+        except OSError as err:
+            _logger.error("Could not open requirements file: %s", err)
+            return 1
         _logger.debug("Wrote outdated packages to %s", args.freeze_file)
 
     if args.raw:
@@ -296,8 +302,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     constraints_files: list[Path] = _get_constraints_files(install_args)
     _logger.debug("Constraints files: %s", constraints_files)
-
-    _set_constraints_of_outdated_pkgs(constraints_files, outdated)
+    try:
+        _set_constraints_of_outdated_pkgs(constraints_files, outdated)
+    except OSError as err:
+        _logger.error("Could not open requirements file: %s", err)
+        return 1
     _logger.debug(
         "Outdated packages with new set constraints: %s",
         outdated,

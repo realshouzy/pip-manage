@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-__all__: list[str] = ["setup_logging", "set_logging_level"]
+__all__: list[str] = ["setup_logging"]
 
 import logging
+import logging.config
 import sys
-from typing import TextIO
+from typing import ClassVar, Literal
 
 if sys.version_info >= (3, 12):  # pragma: >=3.12 cover
     from typing import override
@@ -18,24 +19,63 @@ class _StdOutFilter(logging.Filter):
         return record.levelno <= logging.INFO
 
 
-def setup_logging(logger_name: str) -> logging.Logger:
-    logger: logging.Logger = logging.getLogger(logger_name)
+class _ColoredFormatter(logging.Formatter):
+    COLORS: ClassVar[dict[str, str]] = {
+        "DEBUG": "\033[0;37m",
+        "INFO": "\033[0;32m",
+        "WARNING": "\033[0;33m",
+        "ERROR": "\033[0;31m",
+        "CRITICAL": "\033[1;31m",
+    }
+    RESET: ClassVar[Literal["\033[0m"]] = "\033[0m"
 
-    stdout_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stdout)
-    stdout_handler.set_name("stdout")
-    stdout_handler.addFilter(_StdOutFilter())
-    stdout_handler.setFormatter(logging.Formatter("%(message)s"))
-    stdout_handler.setLevel(logging.DEBUG)
-
-    stderr_handler: logging.StreamHandler[TextIO] = logging.StreamHandler(sys.stderr)
-    stderr_handler.set_name("stderr")
-    stderr_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    stderr_handler.setLevel(logging.WARNING)
-
-    logger.addHandler(stderr_handler)
-    logger.addHandler(stdout_handler)
-    return logger
+    @override
+    def format(self, record: logging.LogRecord) -> str:
+        log_color: str = self.COLORS.get(record.levelname, self.RESET)
+        record.msg = f"{log_color}{record.levelname}: {record.msg}{self.RESET}"
+        return super().format(record)
 
 
-def set_logging_level(logger: logging.Logger, *, verbose: bool) -> None:
-    logger.setLevel(logging.DEBUG if verbose else logging.INFO)
+def setup_logging(*, verbose: bool) -> None:
+    level: Literal["DEBUG", "INFO"] = "DEBUG" if verbose else "INFO"
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "disable_existing_loggers": False,
+            "formatters": {
+                "simple": {
+                    "format": "%(message)s",
+                },
+                "colored": {
+                    "()": _ColoredFormatter,
+                },
+            },
+            "filters": {
+                "StdOutFilter": {
+                    "()": _StdOutFilter,
+                },
+            },
+            "handlers": {
+                "stdout": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stdout",
+                    "formatter": "simple",
+                    "filters": ["StdOutFilter"],
+                    "level": "DEBUG",
+                },
+                "stderr": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://sys.stderr",
+                    "formatter": "colored",
+                    "level": "WARNING",
+                },
+            },
+            "loggers": {
+                "root": {
+                    "level": level,
+                    "handlers": ["stdout", "stderr"],
+                    "propagate": True,
+                },
+            },
+        },
+    )

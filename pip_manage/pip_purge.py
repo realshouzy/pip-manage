@@ -6,10 +6,11 @@ __title__: Final[str] = "pip-purge"
 
 import argparse
 import importlib.metadata
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, NamedTuple
 
-from pip_manage._logging import set_logging_level, setup_logging
+from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
     PIP_CMD,
     UNINSTALL_ONLY,
@@ -18,7 +19,6 @@ from pip_manage._pip_interface import (
 )
 
 if TYPE_CHECKING:
-    import logging
     from collections.abc import Sequence
 
 _EPILOG: Final[str] = (
@@ -29,7 +29,7 @@ they will do what you expect. See 'pip uninstall -h' for a full overview of the 
 """
 )
 
-_logger: logging.Logger = setup_logging(__title__)
+_logger: logging.Logger = logging.getLogger(__title__)
 
 
 def _parse_args(
@@ -189,7 +189,8 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
 ) -> int:
     args, forwarded = _parse_args(argv)
     uninstall_args: list[str] = filter_forwards_include(forwarded, UNINSTALL_ONLY)
-    set_logging_level(_logger, verbose=args.verbose)
+    setup_logging(verbose=args.verbose)
+
     _logger.debug("Forwarded arguments: %s", forwarded)
     _logger.debug("Arguments forwarded to 'pip uninstall': %s", uninstall_args)
 
@@ -201,18 +202,24 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
             "Unrecognized arguments: %s",
             ", ".join(formatted_unrecognized_arg),
         )
+    try:
+        requirements: list[str] = _read_from_requirements(args.requirements)
+    except OSError as err:
+        _logger.error("Could not open requirements file: %s", err)
+        return 1
 
-    if not (packages := [*args.packages, *_read_from_requirements(args.requirements)]):
-        _logger.error("No packages provided")
+    if not (packages := [*args.packages, *requirements]):
+        _logger.error("You must give at least one requirement to uninstall")
         return 1
 
     package_dependencies: dict[str, _DependencyInfo] = {}
     for package in packages:
         if not _is_installed(package):
-            _logger.warning("%s is not installed", package)
+            _logger.warning("Skipping %s as it is not installed", package)
             continue
 
         if package in args.exclude:
+            _logger.debug("Skipping %s", package)
             continue
 
         package_dependencies[package] = dependency_info = _get_dependencies_of_package(
@@ -296,7 +303,11 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     )
 
     if args.freeze_purged_packages:
-        _freeze_packages(args.freeze_file, packages_to_uninstall)
+        try:
+            _freeze_packages(args.freeze_file, packages_to_uninstall)
+        except OSError as err:
+            _logger.error("Could not open requirements file: %s", err)
+            return 1
         _logger.debug("Wrote packages to %s", args.freeze_file)
 
     joined_pip_cmd: str = " ".join(PIP_CMD)
