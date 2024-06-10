@@ -18,6 +18,8 @@ from tests.fixtures import (  # pylint: disable=W0611
     dummy_dependencies,
 )
 
+# pylint: disable=C0302
+
 
 def _raise_package_not_found_error_when_package_c(package: str) -> None:
     if package == "package_c":
@@ -783,7 +785,7 @@ def test_main_freeze_packages(
     arg: str,
 ) -> None:
     test_freeze_file: Path = tmp_path / "freeze.txt"
-    test_freeze_file.touch()
+
     with mock.patch(
         "importlib.metadata.distribution",
         side_effect=lambda package: _custom_importlib_metadata_distribution(
@@ -827,6 +829,51 @@ def test_main_freeze_packages(
         stderr=sys.stderr,
     )
     assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--freeze-file", "-f"])
+def test_main_freeze_packages_fail(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    dummy_dependencies: list[SimpleNamespace],
+    arg: str,
+) -> None:
+    test_freeze_file: Path = tmp_path / "freeze.txt"
+    test_freeze_file.touch(0o000)
+    with mock.patch(
+        "importlib.metadata.distribution",
+        side_effect=lambda package: _custom_importlib_metadata_distribution(
+            package,
+            dummy_dependencies,
+        ),
+    ), mock.patch(
+        "importlib.metadata.distributions",
+        return_value=dummy_dependencies,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_purge.main(
+            [
+                "package_a",
+                "--freeze-purged-packages",
+                arg,
+                str(test_freeze_file),
+            ],
+        )
+    assert len(caplog.record_tuples) == 2
+    assert caplog.record_tuples[0] == (
+        "pip-purge",
+        20,
+        "The following packages will be uninstalled: "
+        "package_a, package_b, package_e",
+    )
+    assert caplog.record_tuples[1][0] == "pip-purge"
+    assert caplog.record_tuples[1][1] == 40
+    assert caplog.record_tuples[1][2].startswith("\x1b[0;31mERROR: ")
+    assert caplog.record_tuples[1][2].endswith("\x1b[0m")
+    assert "Could not open requirements file:" in caplog.record_tuples[1][2]
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 1
 
 
 def test_main_double_check(
@@ -928,6 +975,38 @@ def test_main_requirement(
         stderr=sys.stderr,
     )
     assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--requirement", "-r"])
+def test_main_requirement_fail(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    dummy_dependencies: list[SimpleNamespace],
+    arg: str,
+) -> None:
+    test_requirement_file: Path = tmp_path / "requirement.txt"
+    with mock.patch(
+        "importlib.metadata.distribution",
+    ), mock.patch(
+        "importlib.metadata.distributions",
+        return_value=dummy_dependencies,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_purge.main(
+            [
+                arg,
+                str(test_requirement_file),
+            ],
+        )
+    assert len(caplog.record_tuples) == 1
+    assert caplog.record_tuples[0][0] == "pip-purge"
+    assert caplog.record_tuples[0][1] == 40
+    assert caplog.record_tuples[0][2].startswith("\x1b[0;31mERROR: ")
+    assert caplog.record_tuples[0][2].endswith("\x1b[0m")
+    assert "Could not open requirements file:" in caplog.record_tuples[0][2]
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 1
 
 
 if __name__ == "__main__":

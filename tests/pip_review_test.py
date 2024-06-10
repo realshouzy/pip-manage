@@ -17,7 +17,7 @@ from tests.fixtures import (  # pylint: disable=W0611
     sample_subprocess_output,
 )
 
-# pylint: disable=W0212, E1101, W0621, C0302, R0913, C0301
+# pylint: disable=W0212, E1101, W0621, C0302, R0913, C0301, C0302
 
 
 @pytest.mark.parametrize(
@@ -605,6 +605,28 @@ def test_main_default_output_with_outdated_packages(
     assert exit_code == 0
 
 
+def test_main_default_output_with_outdated_packages_and_constraints_fail(
+    caplog: pytest.LogCaptureFixture,
+    tmp_path: Path,
+    sample_subprocess_output: bytes,
+) -> None:
+    constraints_file: Path = tmp_path / "constraint.txt"
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ), mock.patch("os.getenv", return_value=str(constraints_file)):
+        exit_code: int = pip_review.main([])
+
+    assert len(caplog.record_tuples) == 1
+    assert caplog.record_tuples[0][0] == "pip-review"
+    assert caplog.record_tuples[0][1] == 40
+    assert caplog.record_tuples[0][2].startswith("\x1b[0;31mERROR: ")
+    assert caplog.record_tuples[0][2].endswith("\x1b[0m")
+    assert "Could not open requirements file:" in caplog.record_tuples[0][2]
+    assert exit_code == 1
+
+
 def test_main_default_output_with_outdated_packages_and_constraints_env_var(
     caplog: pytest.LogCaptureFixture,
     tmp_path: Path,
@@ -753,9 +775,11 @@ def test_main_default_output_with_outdated_packages_and_named_arg_constraints_fi
     assert exit_code == 0
 
 
+@pytest.mark.parametrize("arg", ["--freeze-file", "-f"])
 def test_main_freeze_outdated_packages(
     tmp_path: Path,
     sample_subprocess_output: bytes,
+    arg: str,
 ) -> None:
     tmp_file: Path = tmp_path / "outdated.txt"
 
@@ -764,11 +788,39 @@ def test_main_freeze_outdated_packages(
         return_value=sample_subprocess_output,
     ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main(
-            ["--freeze-outdated-packages", "--freeze-file", str(tmp_file)],
+            ["--freeze-outdated-packages", arg, str(tmp_file)],
         )
 
     assert tmp_file.read_text(encoding="utf-8") == "test1==1.0.0\ntest2==1.9.9\n"
     assert exit_code == 0
+
+
+@pytest.mark.parametrize("arg", ["--freeze-file", "-f"])
+def test_main_freeze_outdated_packages_fail(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    sample_subprocess_output: bytes,
+    arg: str,
+) -> None:
+    tmp_file: Path = tmp_path / "outdated.txt"
+    tmp_file.touch(0o000)
+
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ), mock.patch("os.getenv", return_value=None):
+        exit_code: int = pip_review.main(
+            ["--freeze-outdated-packages", arg, str(tmp_file)],
+        )
+
+    assert len(caplog.record_tuples) == 1
+    assert caplog.record_tuples[0][1] == 40
+    assert caplog.record_tuples[0][0] == "pip-review"
+    assert caplog.record_tuples[0][2]
+    assert caplog.record_tuples[0][2].startswith("\x1b[0;31mERROR: ")
+    assert caplog.record_tuples[0][2].endswith("\x1b[0m")
+    assert "Could not open requirements file:" in caplog.record_tuples[0][2]
+    assert exit_code == 1
 
 
 @pytest.mark.parametrize("arg", ["--raw", "-r"])

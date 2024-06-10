@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import logging
 import logging.config
+import sys
 from functools import wraps
 from types import SimpleNamespace
-from typing import Callable, ParamSpec, TypeVar
+from typing import Callable, TypeVar
 
 import pytest
 
 from pip_manage._pip_interface import _OutdatedPackage
+
+if sys.version_info >= (3, 10):  # pragma: >=3.12 cover
+    from typing import ParamSpec
+else:  # pragma: <3.12 cover
+    from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
@@ -25,7 +31,7 @@ def retain_pytest_handlers(f: Callable[_P, _R]) -> Callable[_P, _R]:
         ]
         ret: _R = f(*args, **kwargs)
         for handler in pytest_handlers:
-            if handler not in logging.root.handlers:
+            if handler not in logging.root.handlers:  # pragma: no cover
                 logging.root.addHandler(handler)
         return ret
 
