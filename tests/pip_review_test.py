@@ -285,6 +285,7 @@ def test_get_constraints_files_with_named_args_and_dont_ignore_constraints_env_v
     ("constraints", "expected"),
     [
         ("test2==1.9.9.9", {"1.9.9.9"}),
+        ("test2==1.9.9.9  # test", {"1.9.9.9"}),
         ("test2==1.9.9.9\n#test", {"1.9.9.9"}),
         ("   test2 == 1.9.9.9  ", {"1.9.9.9"}),
     ],
