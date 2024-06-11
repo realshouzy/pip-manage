@@ -281,12 +281,22 @@ def test_get_constraints_files_with_named_args_and_dont_ignore_constraints_env_v
         ]
 
 
+@pytest.mark.parametrize(
+    ("constraints", "expected"),
+    [
+        ("test2==1.9.9.9", {"1.9.9.9"}),
+        ("test2==1.9.9.9\n#test", {"1.9.9.9"}),
+        ("   test2 == 1.9.9.9  ", {"1.9.9.9"}),
+    ],
+)
 def test_set_constraints_of_outdated_pkgs(
     tmp_path: Path,
     sample_packages: list[_OutdatedPackage],
+    constraints: str,
+    expected: set[str],
 ) -> None:
     constraints_file: Path = tmp_path / "constraints_file.txt"
-    constraints_file.write_text("test2==1.9.9.9", encoding="utf-8")
+    constraints_file.write_text(constraints, encoding="utf-8")
 
     assert not sample_packages[0].constraints
     assert not sample_packages[1].constraints
@@ -295,7 +305,7 @@ def test_set_constraints_of_outdated_pkgs(
         sample_packages,
     )
     assert not sample_packages[0].constraints
-    assert sample_packages[1].constraints == {"1.9.9.9"}
+    assert sample_packages[1].constraints == expected
 
 
 def test_set_constraints_of_outdated_pkgs_multiple_constraints(
