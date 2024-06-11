@@ -62,7 +62,7 @@ def test_parse_args_empty_args() -> None:
         argparse.Namespace(
             packages=[],
             requirements=[],
-            verbose=False,
+            debugging=False,
             ignore_extra=False,
             continue_on_fail=False,
             exclude=[],
@@ -77,8 +77,8 @@ def test_parse_args_empty_args() -> None:
 @pytest.mark.parametrize(
     ("args", "field"),
     [
-        pytest.param(["--verbose"], "verbose", id="--verbose"),
-        pytest.param(["-v"], "verbose", id="-v"),
+        pytest.param(["--debug"], "debugging", id="--debug"),
+        pytest.param(["-d"], "debugging", id="-d"),
         pytest.param(["--ignore-extra"], "ignore_extra", id="--ignore-extra"),
         pytest.param(
             ["--continue-on-fail"],
@@ -410,7 +410,7 @@ def test_read_requirements(tmp_path: Path) -> None:
     ]
 
 
-@pytest.mark.parametrize("arg", ["--verbose", "-v"])
+@pytest.mark.parametrize("arg", ["--debug", "-d"])
 def test_main_verbose_flag_sets_logger_level_to_debug(
     dummy_dependencies: list[SimpleNamespace],
     arg: str,
@@ -495,7 +495,7 @@ def test_main_warn_about_unrecognized_args_before_error_exit_when_no_packages_pr
     ), mock.patch(
         "subprocess.call",
     ) as mock_subprocess_call:
-        exit_code: int = pip_purge.main(["-v", "-a", "-b", "-y"])
+        exit_code: int = pip_purge.main(["-d", "-a", "-b", "-y"])
     assert (
         "pip-purge",
         30,
@@ -527,7 +527,7 @@ def test_main_warn_about_unrecognized_args(
     ), mock.patch(
         "subprocess.call",
     ) as mock_subprocess_call:
-        exit_code: int = pip_purge.main(["package_a", "-v", "-a", "-b", "-y"])
+        exit_code: int = pip_purge.main(["package_a", "-d", "-a", "-b", "-y"])
     assert (
         "pip-purge",
         30,

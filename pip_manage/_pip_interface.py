@@ -8,6 +8,7 @@ __all__: list[str] = [
     "LIST_ONLY",
     "INSTALL_ONLY",
     "UNINSTALL_ONLY",
+    "COMMON_PARAMETERS",
 ]
 
 import dataclasses
@@ -95,6 +96,35 @@ UNINSTALL_ONLY: Final[frozenset[str]] = frozenset(
         "yes",
         "root-user-action",
         "break-system-packages",
+    ),
+)
+
+COMMON_PARAMETERS: Final[frozenset[str]] = frozenset(
+    (
+        "isolated",
+        "require-virtualenv",
+        "python",
+        "v",
+        "verbose",
+        "q",
+        "quiet",
+        "log",
+        "no-input",
+        "keyring-provider",
+        "proxy",
+        "retries",
+        "timeout",
+        "exists-action",
+        "trusted-host",
+        "cert",
+        "client-cert",
+        "cache-dir",
+        "no-cache-dir",
+        "disable-pip-version-check",
+        "no-color",
+        "no-python-version-warning",
+        "use-feature",
+        "use-deprecated",
     ),
 )
 

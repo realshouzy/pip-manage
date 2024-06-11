@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Final, Literal, NamedTuple
 
 from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
+    COMMON_PARAMETERS,
     PIP_CMD,
     UNINSTALL_ONLY,
     filter_forwards_include,
@@ -57,11 +58,12 @@ def _parse_args(
         ),
     )
     parser.add_argument(
-        "--verbose",
-        "-v",
+        "--debug",
+        "-d",
+        dest="debugging",
         action="store_true",
         default=False,
-        help="Show more output",
+        help="Show debug information",
     )
     parser.add_argument(
         "--ignore-extra",
@@ -188,8 +190,11 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     argv: Sequence[str] | None = None,
 ) -> int:
     args, forwarded = _parse_args(argv)
-    uninstall_args: list[str] = filter_forwards_include(forwarded, UNINSTALL_ONLY)
-    setup_logging(__title__, verbose=args.verbose)
+    uninstall_args: list[str] = filter_forwards_include(
+        forwarded,
+        UNINSTALL_ONLY.union(COMMON_PARAMETERS),
+    )
+    setup_logging(__title__, debugging=args.debugging)
     logger: logging.Logger = logging.getLogger(__title__)
 
     logger.debug("Forwarded arguments: %s", forwarded)

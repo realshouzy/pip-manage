@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 
 from pip_manage._pip_interface import (
+    COMMON_PARAMETERS,
     INSTALL_ONLY,
     LIST_ONLY,
     PIP_CMD,
@@ -101,6 +102,38 @@ from tests.fixtures import sample_packages, sample_subprocess_output
                 ),
             ),
             id="UNINSTALL_ONLY",
+        ),
+        pytest.param(
+            COMMON_PARAMETERS,
+            frozenset(
+                (
+                    "isolated",
+                    "require-virtualenv",
+                    "python",
+                    "v",
+                    "verbose",
+                    "q",
+                    "quiet",
+                    "log",
+                    "no-input",
+                    "keyring-provider",
+                    "proxy",
+                    "retries",
+                    "timeout",
+                    "exists-action",
+                    "trusted-host",
+                    "cert",
+                    "client-cert",
+                    "cache-dir",
+                    "no-cache-dir",
+                    "disable-pip-version-check",
+                    "no-color",
+                    "no-python-version-warning",
+                    "use-feature",
+                    "use-deprecated",
+                ),
+            ),
+            id="COMMON_PARAMETERS",
         ),
         pytest.param(
             PIP_CMD,

@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Final, Literal, NamedTuple
 
 from pip_manage._logging import setup_logging
 from pip_manage._pip_interface import (
+    COMMON_PARAMETERS,
     INSTALL_ONLY,
     LIST_ONLY,
     filter_forwards,
@@ -43,11 +44,12 @@ def _parse_args(
         epilog=_EPILOG,
     )
     parser.add_argument(
-        "--verbose",
-        "-v",
+        "--debug",
+        "-d",
+        dest="debugging",
         action="store_true",
         default=False,
-        help="Show more output",
+        help="Show debug information",
     )
     parser.add_argument(
         "--raw",
@@ -242,14 +244,14 @@ def main(  # pylint: disable=R0915  # noqa: PLR0915
     list_args: list[str] = filter_forwards(
         forwarded,
         exclude=INSTALL_ONLY,
-        include=LIST_ONLY,
+        include=LIST_ONLY.union(COMMON_PARAMETERS),
     )
     install_args: list[str] = filter_forwards(
         forwarded,
         exclude=LIST_ONLY,
-        include=INSTALL_ONLY,
+        include=INSTALL_ONLY.union(COMMON_PARAMETERS),
     )
-    setup_logging(__title__, verbose=args.verbose)
+    setup_logging(__title__, debugging=args.debugging)
     logger: logging.Logger = logging.getLogger(__title__)
 
     logger.debug("Forwarded arguments: %s", forwarded)
