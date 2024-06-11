@@ -223,6 +223,7 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
             "Unrecognized arguments: %s",
             ", ".join(formatted_unrecognized_arg),
         )
+
     try:
         requirements: list[str] = _read_from_requirements(
             args.requirements,
