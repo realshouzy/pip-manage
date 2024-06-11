@@ -405,10 +405,14 @@ def test_freeze_packages(tmp_path: Path) -> None:
         ("package_b <2.0,>=1.4", "package_b"),
         ("package_c <2.0,>=1.4;python_version<'3.11'", "package_c"),
         ("package_d!=3.0", "package_d"),
-        ("  package_e#comment", "package_e"),
+        ("package_e  # comment", "package_e"),
+        ("  package_f  ", "package_f"),
     ],
 )
-def test_parse_requirements_file_line(requirement: str, package_name: str) -> None:
+def test_extract_package_from_requirements_file_line(
+    requirement: str,
+    package_name: str,
+) -> None:
     assert (
         pip_purge._extract_package_from_requirements_file_line(requirement)
         == package_name
