@@ -117,7 +117,7 @@ def _is_installed(package: str) -> bool:
     return True
 
 
-def _parse_requirements(
+def _get_distribution_requirements(
     requirements: list[str] | None,
     *,
     ignore_extra: bool,
@@ -146,7 +146,11 @@ def _get_required_by(package: str, *, ignore_extra: bool) -> frozenset[str]:
         dist.name
         for dist in importlib.metadata.distributions()
         if dist.name != package
-        and (package in _parse_requirements(dist.requires, ignore_extra=ignore_extra))
+        and package
+        in _get_distribution_requirements(
+            dist.requires,
+            ignore_extra=ignore_extra,
+        )
     )
 
 
@@ -161,7 +165,7 @@ def _get_dependencies_of_package(
     ignore_extra: bool,
 ) -> _DependencyInfo:
     assert _is_installed(package)
-    dependencies: frozenset[str] = _parse_requirements(
+    dependencies: frozenset[str] = _get_distribution_requirements(
         importlib.metadata.distribution(package).requires,
         ignore_extra=ignore_extra,
     )
@@ -169,11 +173,22 @@ def _get_dependencies_of_package(
     return _DependencyInfo(dependencies, dependents)
 
 
+def _extract_package_from_requirements_file_line(requirement: str) -> str:
+    assert not requirement.lstrip().startswith("#")
+    for char in "#;":  # do not change order
+        requirement = requirement.partition(char)[0].strip()
+    for char in "!<>=":  # also do not change order
+        if char in requirement:
+            return requirement.partition(char)[0].strip()
+    return requirement.strip()
+
+
 def _read_from_requirements(requirement_files: list[Path]) -> list[str]:
     return [
-        requirement.strip()
+        _extract_package_from_requirements_file_line(line)
         for requirement_file in requirement_files
-        for requirement in requirement_file.read_text(encoding="utf-8").splitlines()
+        for line in requirement_file.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
     ]
 
 
@@ -209,7 +224,9 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
             ", ".join(formatted_unrecognized_arg),
         )
     try:
-        requirements: list[str] = _read_from_requirements(args.requirements)
+        requirements: list[str] = _read_from_requirements(
+            args.requirements,
+        )
     except OSError as err:
         logger.error("Could not open requirements file: %s", err)
         return 1

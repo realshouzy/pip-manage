@@ -177,7 +177,9 @@ def _set_constraints_of_outdated_pkgs(
 ) -> None:
     for file in constraints_files:
         for line in file.read_text(encoding="utf-8").splitlines():
-            pkg_name, _, constraint_version = line.partition("==")
+            if line.lstrip().startswith("#"):
+                continue
+            pkg_name, _, constraint_version = line.partition("#")[0].partition("==")
             for pkg in outdated:
                 if pkg.name == pkg_name.strip():
                     pkg.constraints.add(constraint_version.strip())

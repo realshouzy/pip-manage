@@ -176,12 +176,12 @@ def test_is_installed_with_mocked_package_found() -> None:
         assert pip_purge._is_installed("test")
 
 
-def test_parse_requirements_without_ignoring_extra() -> None:
+def test_parse_distribution_requirements_without_ignoring_extra() -> None:
     with mock.patch(
         "importlib.metadata.distribution",
         side_effect=_raise_package_not_found_error_when_package_c,
     ):
-        assert pip_purge._parse_requirements(
+        assert pip_purge._get_distribution_requirements(
             [
                 "package_a",
                 "package_b <2.0,>=1.4",
@@ -192,12 +192,12 @@ def test_parse_requirements_without_ignoring_extra() -> None:
         ) == frozenset(("package_a", "package_b", "package_d"))
 
 
-def test_parse_requirements_ignoring_extra() -> None:
+def test_parse_distribution_requirements_ignoring_extra() -> None:
     with mock.patch(
         "importlib.metadata.distribution",
         side_effect=_raise_package_not_found_error_when_package_c,
     ):
-        assert pip_purge._parse_requirements(
+        assert pip_purge._get_distribution_requirements(
             [
                 "package_a",
                 "package_b <2.0,>=1.4",
@@ -398,15 +398,37 @@ def test_freeze_packages(tmp_path: Path) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("requirement", "package_name"),
+    [
+        ("package_a", "package_a"),
+        ("package_b <2.0,>=1.4", "package_b"),
+        ("package_c <2.0,>=1.4;python_version<'3.11'", "package_c"),
+        ("package_d!=3.0", "package_d"),
+        ("package_e  # comment", "package_e"),
+        ("  package_f  ", "package_f"),
+    ],
+)
+def test_extract_package_from_requirements_file_line(
+    requirement: str,
+    package_name: str,
+) -> None:
+    assert (
+        pip_purge._extract_package_from_requirements_file_line(requirement)
+        == package_name
+    )
+
+
 def test_read_requirements(tmp_path: Path) -> None:
     tmp_file1: Path = tmp_path / "requirements1.txt"
-    tmp_file1.write_text("package_a\npackage_b\n")
+    tmp_file1.write_text("package_a<2.0,>=1.4\npackage_b;python_version<'3.11'\n")
     tmp_file2: Path = tmp_path / "requirements2.txt"
-    tmp_file2.write_text("package_c\n")
+    tmp_file2.write_text("package_c\n#test\npackage_d!=3.0\n")
     assert pip_purge._read_from_requirements([tmp_file1, tmp_file2]) == [
         "package_a",
         "package_b",
         "package_c",
+        "package_d",
     ]
 
 
