@@ -150,7 +150,7 @@ def test_setup_logging(
     verbose: bool,  # noqa: FBT001
     level: int,
 ) -> None:
-    setup_logging(name, verbose=verbose)
+    setup_logging(name, debugging=verbose)
     root_logger: logging.Logger = logging.getLogger()
     assert root_logger.level == logging.DEBUG
     assert len(root_logger.handlers) == 2

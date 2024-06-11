@@ -63,7 +63,7 @@ def test_constants(
 def test_parse_args_empty_args() -> None:
     assert pip_review._parse_args([]) == (
         argparse.Namespace(
-            verbose=False,
+            debugging=False,
             raw=False,
             interactive=False,
             auto=False,
@@ -79,8 +79,8 @@ def test_parse_args_empty_args() -> None:
 @pytest.mark.parametrize(
     ("args", "field"),
     [
-        pytest.param(["--verbose"], "verbose", id="--verbose"),
-        pytest.param(["-v"], "verbose", id="-v"),
+        pytest.param(["--debug"], "debugging", id="--debug"),
+        pytest.param(["-d"], "debugging", id="-d"),
         pytest.param(["--raw"], "raw", id="--raw"),
         pytest.param(["-r"], "raw", id="-r"),
         pytest.param(["--interactive"], "interactive", id="--interactive"),
@@ -400,7 +400,7 @@ def test_format_table() -> None:
     assert pip_review._format_table(test_columns) == expected_result
 
 
-@pytest.mark.parametrize("arg", ["--verbose", "-v"])
+@pytest.mark.parametrize("arg", ["--debug", "-d"])
 def test_main_verbose_flag_sets_logger_level_to_debug(
     sample_subprocess_output: bytes,
     arg: str,
@@ -498,6 +498,7 @@ def test_main_warn_about_unrecognized_args(
         *PIP_CMD,
         "install",
         "-U",
+        "-v",
         "test1",
         "test2",
     ]

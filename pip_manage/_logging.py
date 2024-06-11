@@ -39,9 +39,9 @@ class _ColoredFormatter(logging.Formatter):
 def setup_logging(
     logger_name: Literal["pip-review", "pip-purge"],
     *,
-    verbose: bool,
+    debugging: bool,
 ) -> None:
-    level: Literal["DEBUG", "INFO"] = "DEBUG" if verbose else "INFO"
+    level: Literal["DEBUG", "INFO"] = "DEBUG" if debugging else "INFO"
     logging.config.dictConfig(
         {
             "version": 1,
