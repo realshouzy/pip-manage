@@ -55,7 +55,7 @@ def setup_logging(
                 },
             },
             "filters": {
-                "StdOutFilter": {
+                "no_errors": {
                     "()": _NonErrorFilter,
                 },
             },
@@ -64,7 +64,7 @@ def setup_logging(
                     "class": "logging.StreamHandler",
                     "stream": "ext://sys.stdout",
                     "formatter": "simple",
-                    "filters": ["StdOutFilter"],
+                    "filters": ["no_errors"],
                     "level": "DEBUG",
                 },
                 "stderr": {
