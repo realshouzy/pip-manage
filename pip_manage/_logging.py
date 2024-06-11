@@ -74,11 +74,11 @@ def setup_logging(
                     "level": "WARNING",
                 },
             },
+            "root": {
+                "level": "DEBUG",
+                "handlers": ["stdout", "stderr"],
+            },
             "loggers": {
-                "": {
-                    "level": "DEBUG",
-                    "handlers": ["stdout", "stderr"],
-                },
                 logger_name: {"level": level, "propagate": True},
             },
         },
