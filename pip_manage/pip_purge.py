@@ -207,7 +207,7 @@ def main(  # pylint: disable=R0914, R0915  # noqa: PLR0915
     args, forwarded = _parse_args(argv)
     uninstall_args: list[str] = filter_forwards_include(
         forwarded,
-        UNINSTALL_ONLY.union(COMMON_PARAMETERS),
+        UNINSTALL_ONLY | COMMON_PARAMETERS,
     )
     setup_logging(__title__, debugging=args.debugging)
     logger: logging.Logger = logging.getLogger(__title__)

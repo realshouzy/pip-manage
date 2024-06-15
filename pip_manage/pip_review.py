@@ -246,12 +246,12 @@ def main(  # pylint: disable=R0915  # noqa: PLR0915
     list_args: list[str] = filter_forwards(
         forwarded,
         exclude=INSTALL_ONLY,
-        include=LIST_ONLY.union(COMMON_PARAMETERS.difference(("verbose", "v"))),
+        include=LIST_ONLY | COMMON_PARAMETERS - {"verbose", "v"},
     )
     install_args: list[str] = filter_forwards(
         forwarded,
         exclude=LIST_ONLY,
-        include=INSTALL_ONLY.union(COMMON_PARAMETERS),
+        include=INSTALL_ONLY | COMMON_PARAMETERS,
     )
     setup_logging(__title__, debugging=args.debugging)
     logger: logging.Logger = logging.getLogger(__title__)
