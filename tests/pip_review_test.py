@@ -455,6 +455,36 @@ def test_main_no_debug_flag_sets_logger_level_to_info(
     assert exit_code == 0
 
 
+@pytest.mark.parametrize("arg", ["--verbose", "-v"])
+def test_main_verbose_flag_is_not_forwarded_to_pip_list(
+    sample_subprocess_output: bytes,
+    arg: str,
+) -> None:
+    with mock.patch(
+        "subprocess.check_output",
+        return_value=sample_subprocess_output,
+    ) as mock_subprocess_check_output, mock.patch(
+        "pip_manage.pip_review._upgrade_prompter.ask",
+        return_value="a",
+    ), mock.patch(
+        "os.getenv",
+        return_value=None,
+    ), mock.patch(
+        "subprocess.call",
+    ) as mock_subprocess_call:
+        exit_code: int = pip_review.main([arg])
+    expected_cmd: list[str] = [
+        *PIP_CMD,
+        "list",
+        "--outdated",
+        "--disable-pip-version-check",
+        "--format=json",
+    ]
+    mock_subprocess_check_output.assert_called_once_with(expected_cmd)
+    mock_subprocess_call.assert_not_called()
+    assert exit_code == 0
+
+
 @pytest.mark.parametrize(
     ("args", "err_msg"),
     [

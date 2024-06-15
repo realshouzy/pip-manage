@@ -246,7 +246,7 @@ def main(  # pylint: disable=R0915  # noqa: PLR0915
     list_args: list[str] = filter_forwards(
         forwarded,
         exclude=INSTALL_ONLY,
-        include=LIST_ONLY.union(COMMON_PARAMETERS),
+        include=LIST_ONLY.union(COMMON_PARAMETERS.difference(("verbose", "v"))),
     )
     install_args: list[str] = filter_forwards(
         forwarded,
