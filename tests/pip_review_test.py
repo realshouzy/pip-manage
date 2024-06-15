@@ -412,7 +412,7 @@ def test_format_table() -> None:
 
 
 @pytest.mark.parametrize("arg", ["--debug", "-d"])
-def test_main_verbose_flag_sets_logger_level_to_debug(
+def test_main_debug_flag_sets_logger_level_to_debug(
     sample_subprocess_output: bytes,
     arg: str,
 ) -> None:
@@ -434,7 +434,7 @@ def test_main_verbose_flag_sets_logger_level_to_debug(
     assert exit_code == 0
 
 
-def test_main_no_verbose_flag_sets_logger_level_to_info(
+def test_main_no_debug_flag_sets_logger_level_to_info(
     sample_subprocess_output: bytes,
 ) -> None:
     with mock.patch(
