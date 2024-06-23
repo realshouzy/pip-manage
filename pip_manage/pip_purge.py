@@ -127,7 +127,7 @@ def _get_distribution_requirements(
 
     parsed_requirements: set[str] = set()
     for requirement in requirements:
-        requirement_name: str = requirement.partition(" ")[0]
+        requirement_name, *_ = requirement.partition(" ")
         is_installed: bool = _is_installed(requirement_name)
         has_extra: bool = "extra == " in requirement
         either_has_extra_or_ignore_extra_or_neither: bool = (
