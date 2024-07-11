@@ -607,7 +607,7 @@ def test_main_no_outdated_packages(
     ), mock.patch("os.getenv", return_value=None):
         exit_code: int = pip_review.main([arg])
 
-    assert [("pip-review", 20, "Everything up-to-date")] == caplog.record_tuples
+    assert caplog.record_tuples == [("pip-review", 20, "Everything up-to-date")]
     assert exit_code == 0
 
 
