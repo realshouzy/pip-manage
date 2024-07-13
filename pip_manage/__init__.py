@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__: Final[str] = "1.1.1"
+__version__: Final[str] = "1.1.2"
 __title__: Literal["pip-manage"] = "pip-manage"
 
 from typing import Final, Literal
