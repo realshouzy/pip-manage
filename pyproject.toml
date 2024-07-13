@@ -130,16 +130,22 @@ lint.ignore = [
   "TD003",
   "TRY400",
   "S101",
+  "CPY001",
+  "FURB110",
+  "FURB140",
 ]
 lint.fixable = ["ALL"]
 lint.unfixable = []
+lint.preview = true
 show-fixes = true
 target-version = "py312"
 line-length = 88
+format.preview = true
+format.docstring-code-format = true
 
 [tool.ruff.lint.extend-per-file-ignores]
-"./tests/*_test.py" = ["S101", "SLF001", "PLR0913", "F811", "F401"]
-"./tests/*.py" = ["D104"]
+"./tests/*_test.py" = ["S101", "SLF001", "PLR0913", "F811", "F401", "PLR0917"]
+"./tests/*.py" = ["D104", "PLC2701"]
 "./tests/pip_review_test.py" = ["E501"]
 
 [tool.ruff.lint.isort]
