@@ -127,7 +127,7 @@ class _InteractiveAsker:
                 .strip()
                 .casefold()
             )
-            answer = self.last_answer if answer == "" else answer
+            answer = answer if answer else self.last_answer
 
         if answer in {"q", "a"}:
             self.cached_answer = answer

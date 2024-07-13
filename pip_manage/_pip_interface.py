@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 __all__: list[str] = [
-    "update_packages",
+    "COMMON_PARAMETERS",
+    "INSTALL_ONLY",
+    "LIST_ONLY",
+    "PIP_CMD",
+    "UNINSTALL_ONLY",
     "get_outdated_packages",
     "uninstall_packages",
-    "PIP_CMD",
-    "LIST_ONLY",
-    "INSTALL_ONLY",
-    "UNINSTALL_ONLY",
-    "COMMON_PARAMETERS",
+    "update_packages",
 ]
 
 import dataclasses
 import json
-import subprocess  # nosec
+import subprocess  # nosec  # noqa: S404
 import sys
 from typing import TYPE_CHECKING, Final
 

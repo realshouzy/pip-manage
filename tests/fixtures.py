@@ -47,7 +47,7 @@ def _keep_pytest_handlers_during_dict_config(monkeypatch: pytest.MonkeyPatch) ->
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_packages() -> list[_OutdatedPackage]:
     return [
         _OutdatedPackage("test1", "1.0.0", "1.1.0", "wheel"),
@@ -55,7 +55,7 @@ def sample_packages() -> list[_OutdatedPackage]:
     ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_subprocess_output() -> bytes:
     # pylint: disable=C0301
     return (
@@ -64,7 +64,7 @@ def sample_subprocess_output() -> bytes:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def dummy_dependencies() -> list[SimpleNamespace]:
     package_a: SimpleNamespace = SimpleNamespace(
         name="package_a",
